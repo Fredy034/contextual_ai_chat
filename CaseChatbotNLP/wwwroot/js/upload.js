@@ -1,26 +1,29 @@
-﻿async function uploadFile() {
-    const fileInput = document.getElementById('fileInput');
-    const statusElement = document.getElementById('uploadStatus');
+﻿'use strict';
+import { URL_API } from './connection.js';
 
-    if (!fileInput.files[0]) {
-        statusElement.textContent = "⚠️ No has seleccionado ningún archivo.";
-        return;
-    }
+async function uploadFile() {
+  const fileInput = document.getElementById('fileInput');
+  const statusElement = document.getElementById('uploadStatus');
 
-    const formData = new FormData();
-    formData.append('file', fileInput.files[0]);
+  if (!fileInput.files[0]) {
+    statusElement.textContent = '⚠️ No has seleccionado ningún archivo.';
+    return;
+  }
 
-    try {
-        const response = await fetch('https://ch-npl-d5djc6cafehnfgf7.eastus-01.azurewebsites.net/Embedding/upload', {
-            method: 'POST',
-            body: formData,  // No necesitas headers con FormData
-        });
+  const formData = new FormData();
+  formData.append('file', fileInput.files[0]);
 
-        if (!response.ok) throw new Error("Error en la subida");
+  try {
+    const response = await fetch(`${URL_API}/upload`, {
+      method: 'POST',
+      body: formData, // No necesitas headers con FormData
+    });
 
-        const data = await response.json();
-        statusElement.textContent = `✅ Archivo subido. ID: ${data.fileId}`;
-    } catch (error) {
-        statusElement.textContent = `❌ Error: ${error.message}`;
-    }
+    if (!response.ok) throw new Error('Error en la subida');
+
+    const data = await response.json();
+    statusElement.textContent = `✅ Archivo subido. ID: ${data.fileId}`;
+  } catch (error) {
+    statusElement.textContent = `❌ Error: ${error.message}`;
+  }
 }

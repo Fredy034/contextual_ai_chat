@@ -70,7 +70,8 @@ namespace TextSimilarityApi.Services
             var json = await response.Content.ReadAsStringAsync();
             using var doc = JsonDocument.Parse(json);
 
-            string _documento  = " <a href=\"https://ch-npl-d5djc6cafehnfgf7.eastus-01.azurewebsites.net/Embedding/download?name=" + filename + "\" > Ver documento</a>";
+            // string _documento  = " <a href=\"https://ch-npl-d5djc6cafehnfgf7.eastus-01.azurewebsites.net/Embedding/download?name=" + filename + "\" > Ver documento</a>";
+            string _documento  = " <a href=\"https://localhost:7180/Embedding/download?name=" + filename + "\" > Ver documento</a>";
             if (question.ToLower() == "hola")
                 _documento = "";
 
