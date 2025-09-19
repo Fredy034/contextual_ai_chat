@@ -35,7 +35,7 @@ namespace TextSimilarityApi.Services
             return json["data"]?[0]?["embedding"]?.Select(v => (float)v).ToArray() ?? Array.Empty<float>();
         }
 
-        public async Task<string> GetRespuestaAsync(string texto, string question,string filename)
+        public async Task<string> GetRespuestaAsync(string texto, string question, string filename)
         {
            
             var deployment = "gpt-4.1-nano";

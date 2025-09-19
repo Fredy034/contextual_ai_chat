@@ -1,5 +1,6 @@
 ﻿using Microsoft.AspNetCore.Mvc;
 using TextSimilarityApi.Services;
+using System.Linq;
 
 namespace TextSimilarityApi.Controllers
 {
@@ -44,8 +45,34 @@ namespace TextSimilarityApi.Controllers
             if (!System.IO.File.Exists(filePath))
                 return NotFound();
 
+            var ext = Path.GetExtension(filePath).ToLowerInvariant();
+            string contentType = ext switch
+            {
+                ".pdf" => "application/pdf",
+                ".txt" => "text/plain",
+                ".csv" => "text/csv",
+                ".doc" => "application/msword",
+                ".docx" => "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+                ".xls" => "application/vnd.ms-excel",
+                ".xlsx" => "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                ".png" => "image/png",
+                ".jpg" => "image/jpeg",
+                ".jpeg" => "image/jpeg",
+                ".gif" => "image/gif",
+                _ => "application/octet-stream"
+            };
+
             var fileBytes = System.IO.File.ReadAllBytes(filePath);
-            return File(fileBytes, "application/octet-stream", $"{name}");
+            var forceDownload = Request.Query.ContainsKey("download") && Request.Query["download"].ToString().ToLower() == "true";
+            if (forceDownload)
+            {
+                Response.Headers.Add("Content-Disposition", $"attachment; filename=\"{name}\"");
+                return File(fileBytes, contentType);
+            }
+            else
+            {
+                return File(fileBytes, contentType);
+            }
         }
 
         [HttpPost("search")]
@@ -80,7 +107,7 @@ namespace TextSimilarityApi.Controllers
 
         [HttpPost("searchweb")]
         public async Task<IActionResult> searchweb([FromBody] QueryRequest request)
-        {            
+        {
 
             var _respuesta = await _embeddingService.GetRespuestaWebAsync(request.Query);
 
@@ -92,9 +119,26 @@ namespace TextSimilarityApi.Controllers
                 //similarity = bestMatch?.Similarity
             });
         }
+
+        [HttpGet("documents")]
+        public IActionResult GetDocuments()
+        {
+            var docs = _repository.GetAllDocuments();
+
+            var result = docs.Select(d => new
+            {
+                d.FileName,
+                d.Snippet,
+                downloadUrl = Url.Action(
+                    action: nameof(DownloadFile),
+                    controller: "Embedding",
+                    values: new { name = d.FileName },
+                    protocol: Request.Scheme)
+            });
+
+            return Ok(result);
+        }
     }
-
-
 
     public class QueryRequest
     {

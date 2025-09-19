@@ -1,5 +1,7 @@
 ﻿using Microsoft.Data.Sqlite;
 using System.Text.Json;
+using System.Collections.Generic;
+using System;
 using static System.Net.Mime.MediaTypeNames;
 
 namespace TextSimilarityApi.Services
@@ -57,6 +59,42 @@ namespace TextSimilarityApi.Services
                 var text = reader.GetString(2);
                 var vector = JsonSerializer.Deserialize<float[]>(vectorJson);
                 results.Add((fileName, vector, text));
+            }
+
+            return results;
+        }
+
+        public class DocumentInfo
+        {
+            public string FileName { get; set; } = string.Empty;
+            public string Snippet { get; set; } = string.Empty;
+        }
+
+        public List<DocumentInfo> GetAllDocuments(int snippetLength = 200)
+        {
+            var results = new List<DocumentInfo>();
+
+            using var connection = new SqliteConnection(_connectionString);
+            connection.Open();
+
+            var selectCmd = connection.CreateCommand();
+            selectCmd.CommandText = "SELECT FileName, Text FROM Embeddings GROUP BY FileName;";
+
+            using var reader = selectCmd.ExecuteReader();
+            while (reader.Read())
+            {
+                var fileName = reader.IsDBNull(0) ? string.Empty : reader.GetString(0);
+                var text = reader.IsDBNull(1) ? string.Empty : reader.GetString(1);
+
+                var snippet = string.IsNullOrEmpty(text)
+                    ? string.Empty
+                    : (text.Length > snippetLength ? text.Substring(0, snippetLength) + "..." : text);
+
+                results.Add(new DocumentInfo
+                {
+                    FileName = fileName,
+                    Snippet = snippet
+                });
             }
 
             return results;
