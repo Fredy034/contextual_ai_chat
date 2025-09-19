@@ -142,10 +142,12 @@ if (window.CHAT_TYPE) {
 
 if (document.getElementById('request-type')) {
   // Custom select logic
+
   const selectDropdown = document.querySelector('.select-dropdown');
   const selectBtn = document.getElementById('select-btn');
   const selectOptions = document.getElementById('select-options');
   const selectInput = document.getElementById('request-type');
+  const selectLabel = document.getElementById('select-label');
 
   selectBtn.addEventListener('click', function () {
     selectDropdown.classList.toggle('open');
@@ -156,6 +158,7 @@ if (document.getElementById('request-type')) {
       selectOptions.querySelectorAll('li').forEach((el) => el.classList.remove('selected'));
       li.classList.add('selected');
       selectInput.value = li.getAttribute('data-value');
+      selectLabel.textContent = li.textContent;
       selectDropdown.classList.remove('open');
     });
   });

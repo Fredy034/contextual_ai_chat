@@ -7,7 +7,7 @@
 
     <link rel="stylesheet" href="./css/styles.css" />
   </head>
-  
+
   <body>
     <nav class="navbar">
       <div class="navbar-left">
@@ -15,31 +15,73 @@
           <img src="Imagen.png" class="navbar-icon" alt="Logo" />
         </a>
         <span class="navbar-title">Gestor de Archivos</span>
+        <button class="navbar-toggle" id="navbar-toggle" aria-label="Menú">
+          <span></span><span></span><span></span>
+        </button>
       </div>
-      <div class="navbar-links">
+
+      <div class="navbar-links" id="navbar-links">
         <a href="index.html">Inicio</a>
         <a href="buscar.html">Consultar en Documentación</a>
         <a href="buscarweb.html">Consultar en la WEB</a>
       </div>
     </nav>
 
-    <!-- Sección de Subida -->
-    <div class="section">
-      <h2>Subir Archivo</h2>
-      <input type="file" id="fileInput" />
-      <button onclick="uploadFile()">Subir</button>
-      <p id="uploadStatus"></p>
-    </div>
+    <main class="container">
+      <!-- Subida -->
+      <section class="section">
+        <h2>Subir Archivo</h2>
+        <form class="upload-row" onsubmit="return false;">
+          <div class="file-input-container">
+            <label for="fileInput" class="file-label">
+              <span class="file-icon">&#128194;</span>
+              <span class="file-label-text">Selecciona un archivo</span>
+              <input type="file" id="fileInput" style="display: none" />
+            </label>
+            <span id="fileName" class="file-name"></span>
+          </div>
+          <button id="btnUpload" type="button">Subir</button>
+        </form>
+        <p id="uploadStatus" class="status-text"></p>
+      </section>
 
-    <!-- Sección de Descarga -->
-    <div class="section">
-      <h2>Descargar Archivo</h2>
-      <input type="text" id="fileId" placeholder="ID del archivo" />
-      <button onclick="downloadFile()">Descargar</button>
-    </div>
+      <!-- Listado de documentos -->
+      <section class="section">
+        <div class="section-header">
+          <h2>Documentos Subidos</h2>
+          <button id="btnRefresh">Refrescar</button>
+        </div>
+        <div id="documentsList" class="documents-grid"></div>
+      </section>
+    </main>
 
     <!-- Scripts -->
-    <script src="js/upload.js" type="module"></script>
-    <script src="js/download.js" type="module"></script>
+    <script type="module">
+      import { loadDocuments } from './js/document.js';
+      import { uploadFile } from './js/upload.js';
+
+      const toggleBtn = document.getElementById('navbar-toggle');
+      const links = document.getElementById('navbar-links');
+
+      toggleBtn.addEventListener('click', function () {
+        links.classList.toggle('show');
+        toggleBtn.classList.toggle('open');
+      });
+      document.addEventListener('click', function (e) {
+        if (!toggleBtn.contains(e.target) && !links.contains(e.target)) {
+          links.classList.remove('show');
+          toggleBtn.classList.remove('open');
+        }
+      });
+
+      // Inicializar UI
+      document.getElementById('btnUpload').addEventListener('click', uploadFile);
+      document.getElementById('btnRefresh').addEventListener('click', () => loadDocuments('documentsList'));
+  
+      // cargar documentos al inicio
+      loadDocuments('documentsList');
+    </script>
+    <script type="module" src="js/connection.js"></script>
+    <script type="module" src="js/document.js"></script>
   </body>
 </html>

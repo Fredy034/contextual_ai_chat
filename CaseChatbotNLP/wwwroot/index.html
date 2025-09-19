@@ -15,8 +15,12 @@
           <img src="Imagen.png" class="navbar-icon" alt="Logo" />
         </a>
         <span class="navbar-title">Consulta de Casos</span>
+        <button class="navbar-toggle" id="navbar-toggle" aria-label="Menú">
+          <span></span><span></span><span></span>
+        </button>
       </div>
-      <div class="navbar-links">
+
+      <div class="navbar-links" id="navbar-links">
         <a href="buscar.html">Consultar en Documentación</a>
         <a href="buscarweb.html">Consultar en la WEB</a>
         <a href="upload.html">Subir Archivo</a>
@@ -29,6 +33,7 @@
       <div class="input-group">
         <div class="select-dropdown">
           <button id="select-btn" type="button">
+            <span id="select-label" class="select-label">Tabla reporte</span>
             <span class="select-arrow">&#43;</span>
           </button>
           <ul id="select-options" class="select-options">
@@ -43,6 +48,22 @@
       </div>
     </div>
 
+    <!-- Scripts -->
+    <script>
+      const toggleBtn = document.getElementById('navbar-toggle');
+      const links = document.getElementById('navbar-links');
+
+      toggleBtn.addEventListener('click', function () {
+        links.classList.toggle('show');
+        toggleBtn.classList.toggle('open');
+      });
+      document.addEventListener('click', function (e) {
+        if (!toggleBtn.contains(e.target) && !links.contains(e.target)) {
+          links.classList.remove('show');
+          toggleBtn.classList.remove('open');
+        }
+      });
+    </script>
     <script src="./js/chat.js"></script>
   </body>
 </html>

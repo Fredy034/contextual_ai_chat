@@ -14,9 +14,13 @@
         <a href="index.html">
           <img src="Imagen.png" class="navbar-icon" alt="Logo" />
         </a>
-        <span class="navbar-title">Consultar en Documentación</span>
+        <span class="navbar-title">Consultar en Documentación</span>        
+        <button class="navbar-toggle" id="navbar-toggle" aria-label="Menú">
+          <span></span><span></span><span></span>
+        </button>
       </div>
-      <div class="navbar-links">
+
+      <div class="navbar-links" id="navbar-links">
         <a href="index.html">Inicio</a>
         <a href="buscarweb.html">Consultar en la WEB</a>
         <a href="upload.html">Subir Archivo</a>
@@ -34,6 +38,20 @@
     <!-- Scripts -->
     <script>
       window.CHAT_TYPE = 'normal';
+
+      const toggleBtn = document.getElementById('navbar-toggle');
+      const links = document.getElementById('navbar-links');
+
+      toggleBtn.addEventListener('click', function () {
+        links.classList.toggle('show');
+        toggleBtn.classList.toggle('open');
+      });
+      document.addEventListener('click', function (e) {
+        if (!toggleBtn.contains(e.target) && !links.contains(e.target)) {
+          links.classList.remove('show');
+          toggleBtn.classList.remove('open');
+        }
+      });
     </script>
     <script src="./js/chat.js" type="module"></script>
   </body>

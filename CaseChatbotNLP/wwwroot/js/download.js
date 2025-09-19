@@ -1,33 +1,40 @@
-﻿'use strict';
+﻿// js/download.js
+'use strict';
 import { URL_API } from './connection.js';
 
-async function downloadFile() {
-  const fileId = document.getElementById('fileId').value;
+export async function downloadFile() {
+  const fileId = document.getElementById('fileId').value.trim();
   const statusElement = document.getElementById('downloadStatus');
 
+  statusElement.textContent = '';
   if (!fileId) {
-    statusElement.textContent = '⚠️ Ingresa un ID de archivo.';
+    statusElement.textContent = '⚠️ Ingresa un nombre de archivo.';
     return;
   }
 
   try {
-    const response = await fetch(`${URL_API}/download?name=${fileId}`, {
+    const response = await fetch(`${URL_API}/download?name=${encodeURIComponent(fileId)}`, {
       method: 'GET',
     });
 
     if (!response.ok) throw new Error('Archivo no encontrado');
 
-    // Obtener el blob (para PDF, imágenes, etc.)
     const blob = await response.blob();
+    const contentDisposition = response.headers.get('content-disposition') || '';
+    let filename = `archivo-${fileId}`;
 
-    // Crear un enlace de descarga
+    // intentar extraer nombre real del header content-disposition
+    const match = /filename="?([^"]+)"?/.exec(contentDisposition);
+    if (match && match[1]) filename = match[1];
+
     const url = window.URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `archivo-${fileId}`; // Nombre del archivo
+    a.download = filename;
     document.body.appendChild(a);
     a.click();
-    document.body.removeChild(a);
+    a.remove();
+    window.URL.revokeObjectURL(url);
 
     statusElement.textContent = '✅ Descarga iniciada.';
   } catch (error) {
