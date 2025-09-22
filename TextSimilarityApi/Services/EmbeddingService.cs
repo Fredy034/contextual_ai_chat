@@ -37,45 +37,44 @@ namespace TextSimilarityApi.Services
 
         public async Task<string> GetRespuestaAsync(string texto, string question, string filename)
         {
-           
+            var contextText = string.Join("\n---\n", texto);
+
             var deployment = "gpt-4.1-nano";
             var apiVersion = "2025-01-01-preview";
 
-            var contextText = string.Join("\n---\n", texto);
+            var systemPrompt = "Responde la pregunta solo con base en el contexto.";
 
-            var finalPrompt = $@"
-            Eres un asistente que responde preguntas basadas en texto.
+            var userMessage = $@"
+                Eres un asistente que responde preguntas basadas en texto.
+                Contexto: {contextText}
+                Pregunta: {question}
+            ";
 
-            Contexto:
-            {contextText}
-
-            Pregunta: {question}";
-            
-            var requestBody = new
-            {
-                messages = new[]
-            {
-             new { role = "system", content = "Responde la pregunta solo con base en el contexto." },
-             new { role = "user", content = finalPrompt }
-
-             },
+            var requestBody = new {
+                messages = new object[]
+                {
+                    new { role = "system", content = systemPrompt  },
+                    new { role = "user", content = userMessage }
+                },
                 temperature = 0
             };
 
             var content = new StringContent(JsonSerializer.Serialize(requestBody), Encoding.UTF8, "application/json");
-
             var response = await _client.PostAsync($"/openai/deployments/{deployment}/chat/completions?api-version={apiVersion}", content);
             response.EnsureSuccessStatusCode();
 
             var json = await response.Content.ReadAsStringAsync();
             using var doc = JsonDocument.Parse(json);
+            var answer = doc.RootElement.GetProperty("choices")[0].GetProperty("message").GetProperty("content").GetString();
 
-            // string _documento  = " <a target=\"_blank\" href=\"https://ch-npl-d5djc6cafehnfgf7.eastus-01.azurewebsites.net/Embedding/download?name=" + filename + "&download=false\" > Ver documento</a>";
-            string _documento  = " <a target=\"_blank\" href=\"https://localhost:7180/Embedding/download?name=" + filename + "&download=false\" > Ver documento</a>";
-            if (question.ToLower() == "hola")
+            // string _documento = $"<br> <a target=\"_blank\" href=\"https://ch-npl-d5djc6cafehnfgf7.eastus-01.azurewebsites.net/Embedding/download?name={filename}&download=false\" > Ver documento</a>";
+            string _documento = $"<br> <a target=\"_blank\" href=\"https://localhost:7180/Embedding/download?name={filename}&download=false\" > Ver documento</a>";
+            if (question.ToLower().Contains("hola"))
+                _documento = "";
+            if (answer != null && answer.Contains("No hay información suficiente"))
                 _documento = "";
 
-            return doc.RootElement.GetProperty("choices")[0].GetProperty("message").GetProperty("content").GetString().Replace("\n", "<br>") + "  " + _documento;
+            return (answer?.Replace("\n", "<br>") ?? "") + _documento;
         }
 
         public async Task<string> GetRespuestaWebAsync(string question)
