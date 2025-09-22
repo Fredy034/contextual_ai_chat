@@ -1,5 +1,4 @@
-﻿// js/upload.js
-'use strict';
+﻿'use strict';
 import { URL_API } from './connection.js';
 import { refreshDocuments } from './document.js';
 

@@ -1,5 +1,4 @@
-﻿// js/download.js
-'use strict';
+﻿'use strict';
 import { URL_API } from './connection.js';
 
 export async function downloadFile() {
