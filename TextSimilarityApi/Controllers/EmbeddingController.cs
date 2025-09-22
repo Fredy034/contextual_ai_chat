@@ -1,6 +1,6 @@
 ﻿using Microsoft.AspNetCore.Mvc;
 using TextSimilarityApi.Services;
-using System.Linq;
+using Microsoft.AspNetCore.Hosting;
 
 namespace TextSimilarityApi.Controllers
 {
@@ -10,11 +10,13 @@ namespace TextSimilarityApi.Controllers
     {
         private readonly EmbeddingService _embeddingService;
         private readonly EmbeddingRepository _repository;
+        private readonly IWebHostEnvironment _env;
 
-        public EmbeddingController(EmbeddingService embeddingService, EmbeddingRepository repository)
+        public EmbeddingController(EmbeddingService embeddingService, EmbeddingRepository repository, IWebHostEnvironment env)
         {
             _embeddingService = embeddingService;
             _repository = repository;
+            _env = env;
         }
 
         [HttpPost("upload")]
@@ -23,8 +25,13 @@ namespace TextSimilarityApi.Controllers
             if (file == null || file.Length == 0)
                 return BadRequest("Archivo no válido.");
 
-            var filePath = Path.Combine("Uploads", file.FileName);
-            Directory.CreateDirectory("Uploads");
+            // Guardar en ruta absoluta dentro del ContentRootPath
+            var uploadsDir = Path.Combine(_env.ContentRootPath, "Uploads");
+            Directory.CreateDirectory(uploadsDir);
+
+            var safeFileName = Path.GetFileName(file.FileName);
+            var filePath = Path.Combine(uploadsDir, safeFileName);
+
             using (var stream = new FileStream(filePath, FileMode.Create))
             {
                 await file.CopyToAsync(stream);
@@ -32,16 +39,22 @@ namespace TextSimilarityApi.Controllers
 
             var text = TextExtractor.ExtractText(filePath);
             var embedding = await _embeddingService.GetEmbeddingAsync(text);
-            _repository.SaveEmbedding(file.FileName, embedding, text);
+            _repository.SaveEmbedding(safeFileName, embedding, text);
 
-            return Ok(new { message = $"Archivo '{file.FileName}' procesado y guardado." });
+            return Ok(new { message = $"Archivo '{safeFileName}' procesado y guardado." });
         }
 
         [HttpGet("download")]
-        public IActionResult DownloadFile([FromQuery] string name)
+        public IActionResult DownloadFile([FromQuery] string name, [FromQuery] bool download = false)
         {
-            // Buscar el archivo (ejemplo simplificado)
-            var filePath = Path.Combine("Uploads", $"{name}");
+            if (string.IsNullOrWhiteSpace(name))
+                return BadRequest("Nombre de archivo requerido.");
+
+            // Evitar path traversal y construir ruta absoluta
+            var safeName = Path.GetFileName(name);
+            var uploadsDir = Path.Combine(_env.ContentRootPath, "Uploads");
+            var filePath = Path.Combine(uploadsDir, safeName);
+
             if (!System.IO.File.Exists(filePath))
                 return NotFound();
 
@@ -62,17 +75,14 @@ namespace TextSimilarityApi.Controllers
                 _ => "application/octet-stream"
             };
 
-            var fileBytes = System.IO.File.ReadAllBytes(filePath);
-            var forceDownload = Request.Query.ContainsKey("download") && Request.Query["download"].ToString().ToLower() == "true";
-            if (forceDownload)
+            if (download)
             {
-                Response.Headers.Add("Content-Disposition", $"attachment; filename=\"{name}\"");
-                return File(fileBytes, contentType);
+                // Forzar descarga: PhysicalFile con fileDownloadName agrega Content-Disposition: attachment
+                return PhysicalFile(filePath, contentType, safeName);
             }
-            else
-            {
-                return File(fileBytes, contentType);
-            }
+
+            // Preview: devolver el archivo sin header de attachment (inline)
+            return PhysicalFile(filePath, contentType);
         }
 
         [HttpPost("search")]
@@ -88,8 +98,6 @@ namespace TextSimilarityApi.Controllers
                     Similarity = SimilarityCalculator.CosineSimilarity(queryEmbedding, e.Vector),
                     e.Text
                 })
-                //.Where(e => e.Similarity >= 0.6) //  Filtro por similitud mínima
-                //.Take(5)
                 .OrderByDescending(e => e.Similarity)
                 .ToList()
                 .FirstOrDefault();
@@ -99,24 +107,17 @@ namespace TextSimilarityApi.Controllers
             return Ok(new
             {
                 results = _respuesta
-                //results = bestMatch
-                //best_match = bestMatch?.FileName,
-                //similarity = bestMatch?.Similarity
             });
         }
 
         [HttpPost("searchweb")]
         public async Task<IActionResult> searchweb([FromBody] QueryRequest request)
         {
-
             var _respuesta = await _embeddingService.GetRespuestaWebAsync(request.Query);
 
             return Ok(new
             {
                 results = _respuesta
-                //results = bestMatch
-                //best_match = bestMatch?.FileName,
-                //similarity = bestMatch?.Similarity
             });
         }
 
@@ -125,15 +126,28 @@ namespace TextSimilarityApi.Controllers
         {
             var docs = _repository.GetAllDocuments();
 
-            var result = docs.Select(d => new
+            var result = docs.Select(d =>
             {
-                d.FileName,
-                d.Snippet,
-                downloadUrl = Url.Action(
+                // Construir URLs absolutas: preview (inline) y download (forzada)
+                var previewUrl = Url.Action(
                     action: nameof(DownloadFile),
                     controller: "Embedding",
-                    values: new { name = d.FileName },
-                    protocol: Request.Scheme)
+                    values: new { name = d.FileName, download = false },
+                    protocol: Request.Scheme);
+
+                var downloadUrl = Url.Action(
+                    action: nameof(DownloadFile),
+                    controller: "Embedding",
+                    values: new { name = d.FileName, download = true },
+                    protocol: Request.Scheme);
+
+                return new
+                {
+                    d.FileName,
+                    d.Snippet,
+                    previewUrl,
+                    downloadUrl
+                };
             });
 
             return Ok(result);
@@ -145,4 +159,3 @@ namespace TextSimilarityApi.Controllers
         public string Query { get; set; }
     }
 }
-
