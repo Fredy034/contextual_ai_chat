@@ -37,7 +37,21 @@ namespace TextSimilarityApi.Controllers
                 await file.CopyToAsync(stream);
             }
 
-            var text = TextExtractor.ExtractText(filePath);
+            string text;
+            try
+            {
+                text = TextExtractor.ExtractText(filePath);
+            }
+            catch (NotSupportedException ex)
+            {
+                return BadRequest(new { error = ex.Message });
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"[Upload] Error extrayendo texto: {ex}");
+                return StatusCode(500, new { error = "Error procesando el archivo: " + ex.Message });
+            }
+
             var embedding = await _embeddingService.GetEmbeddingAsync(text);
             _repository.SaveEmbedding(safeFileName, embedding, text);
 
