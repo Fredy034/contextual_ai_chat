@@ -47,7 +47,7 @@ export async function loadDocuments(containerId = 'documentsList') {
             <p class="doc-snippet">${escapeHtml(snippet)}</p>
           </div>
           <div class="doc-actions">
-            <a class="btn-secondary" href="${escapeAttr(downloadUrl)}" target="_blank" rel="noopener" download>Descargar</a>
+            <a class="btn-secondary" href="${escapeAttr(downloadUrl)}" rel="noopener" download>Descargar</a>
             <button class="btn-tertiary" onclick="window.open(decodeURIComponent('${previewUrlEncoded}'), '_blank', 'noopener')">Vista</button>
           </div>
         </article>
