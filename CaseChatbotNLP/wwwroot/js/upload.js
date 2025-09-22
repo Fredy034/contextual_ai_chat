@@ -6,6 +6,11 @@ const fileInput = document.getElementById('fileInput');
 const fileNameSpan = document.getElementById('fileName');
 const statusElement = document.getElementById('uploadStatus');
 
+const btnSave = document.getElementById('btnSaveCase');
+const statusEl = document.getElementById('caseStatus');
+
+if (btnSave) btnSave.addEventListener('click', submitCaseForm);
+
 if (fileInput && fileNameSpan) {
   fileInput.addEventListener('change', function () {
     if (fileInput.files && fileInput.files[0]) {
@@ -51,8 +56,85 @@ export async function uploadFile() {
 
     // Refrescar lista de documentos
     await refreshDocuments();
+
+    // Ocultar formulario de subida
+    const uploadSection = document.getElementById('uploadSection');
+    if (uploadSection) uploadSection.style.display = 'none';
   } catch (error) {
     statusElement.textContent = `❌ Error: ${error.message}`;
     fileNameSpan.textContent = '';
+  }
+}
+
+async function submitCaseForm() {
+  statusEl.textContent = '';
+  const desc = document.getElementById('descError').value.trim();
+  const services = document.getElementById('services').value.trim();
+  const steps = document.getElementById('steps').value.trim();
+  const cont = document.getElementById('continueWork').value.trim();
+  const solution = document.getElementById('solution').value.trim();
+
+  if (!desc || !steps || !solution) {
+    statusEl.textContent = '⚠️ Completa campos obligatorios: Descripción, Pasos, Solución.';
+    return;
+  }
+
+  // Formato del .txt (puedes adaptarlo)
+  const content = [
+    'Descripción del Error:',
+    desc,
+    '',
+    'Servicios impactados:',
+    services,
+    '',
+    'Pasos para reproducir el error:',
+    steps,
+    '',
+    'Cómo se continuó el trabajo mientras se resolvía:',
+    cont,
+    '',
+    'Solución del error:',
+    solution,
+    '',
+  ].join('\n');
+
+  // límite opcional (evitar textos enormes)
+  if (content.length > 300_000) {
+    statusEl.textContent = '⚠️ Caso demasiado extenso (máx 300KB).';
+    return;
+  }
+
+  // Nombre de archivo único
+  const ts = new Date().toISOString().replace(/[:.]/g, '-');
+  const filename = `errores_conocidos_${ts}.txt`;
+  const file = new File([content], filename, { type: 'text/plain' });
+
+  const formData = new FormData();
+  formData.append('file', file);
+
+  try {
+    statusEl.innerHTML = 'Subiendo caso...';
+    const resp = await fetch(`${URL_API}/upload`, {
+      method: 'POST',
+      body: formData,
+    });
+
+    if (!resp.ok) {
+      const text = await resp.text();
+      throw new Error(text || 'Error subiendo el caso');
+    }
+
+    const data = await resp.json();
+    statusEl.textContent = `✅ Caso guardado: ${data.message ?? filename}`;
+    // limpiar formulario
+    document.getElementById('caseForm').reset();
+    // refrescar lista de documentos para que aparezca el .txt nuevo
+    await refreshDocuments();
+
+    // Ocultar formulario de caso
+    const caseSection = document.getElementById('caseSection');
+    if (caseSection) caseSection.style.display = 'none';
+  } catch (err) {
+    statusEl.textContent = `❌ Error: ${err.message}`;
   }
 }

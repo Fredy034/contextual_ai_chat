@@ -28,21 +28,58 @@
     </nav>
 
     <main class="container">
-      <!-- Subida -->
+      <!-- Botones para mostrar secciones -->
       <section class="section">
+        <button id="showUploadBtn" type="button" class="btn-secondary">Subir Archivo</button>
+        <button id="showCaseBtn" type="button" class="btn-secondary">Registrar Error Conocido</button>
+      </section>
+
+      <!-- Sección de Subida de Archivos -->
+      <section class="section" id="uploadSection" style="display: none">
         <h2>Subir Archivo</h2>
         <form class="upload-row" onsubmit="return false;">
           <div class="file-input-container">
             <label for="fileInput" class="file-label">
               <span class="file-icon">&#128194;</span>
               <span class="file-label-text">Selecciona un archivo</span>
-              <input type="file" id="fileInput" style="display: none" />
+              <input type="file" id="fileInput" style="display: none" accept=".txt,.pdf,.doc,.docx,.xls,.xlsx,.csv" />
             </label>
             <span id="fileName" class="file-name"></span>
           </div>
           <button id="btnUpload" type="button">Subir</button>
         </form>
         <p id="uploadStatus" class="status-text"></p>
+      </section>
+
+      <!-- Sección de Registro de Errores -->
+      <section class="section" id="caseSection" style="display: none">
+        <h2>Registrar errores conocidos / añadir contexto</h2>
+        <form id="caseForm" class="case-form" onsubmit="return false;">
+          <label
+            >Descripción del Error
+            <textarea id="descError" placeholder="Describe el error" required></textarea>
+          </label>
+          <label
+            >Servicios impactados
+            <input id="services" type="text" placeholder="Servicio A, Servicio B" required />
+          </label>
+          <label
+            >Pasos para reproducir el error
+            <textarea id="steps" placeholder="1. Paso uno 2. Paso dos" required></textarea>
+          </label>
+          <label
+            >Cómo continuar mientras se resolvía
+            <textarea id="continueWork" placeholder="Describe cómo continuaste trabajando"></textarea>
+          </label>
+          <label
+            >Solución del error
+            <textarea id="solution" placeholder="Describe la solución del error" required></textarea>
+          </label>
+          <div>
+            <button id="btnSaveCase" type="button">Guardar caso y subir</button>
+            <span id="caseStatus" class="status-text"></span>
+          </div>
+        </form>
       </section>
 
       <!-- Listado de documentos -->
@@ -74,10 +111,39 @@
         }
       });
 
+      // Mostrar/ocultar formularios según opción
+      const uploadSection = document.getElementById('uploadSection');
+      const caseSection = document.getElementById('caseSection');
+      const showUploadBtn = document.getElementById('showUploadBtn');
+      const showCaseBtn = document.getElementById('showCaseBtn');
+
+      function hideAllForms() {
+        uploadSection.style.display = 'none';
+        caseSection.style.display = 'none';
+      }
+
+      showUploadBtn.addEventListener('click', () => {
+        // Si está visible, ocultar; si está oculto, mostrar
+        if (uploadSection.style.display === 'block') {
+          uploadSection.style.display = 'none';
+        } else {
+          hideAllForms();
+          uploadSection.style.display = 'block';
+        }
+      });
+      showCaseBtn.addEventListener('click', () => {
+        if (caseSection.style.display === 'block') {
+          caseSection.style.display = 'none';
+        } else {
+          hideAllForms();
+          caseSection.style.display = 'block';
+        }
+      });
+
       // Inicializar UI
       document.getElementById('btnUpload').addEventListener('click', uploadFile);
       document.getElementById('btnRefresh').addEventListener('click', () => loadDocuments('documentsList'));
-  
+
       // cargar documentos al inicio
       loadDocuments('documentsList');
     </script>

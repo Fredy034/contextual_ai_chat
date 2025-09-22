@@ -563,6 +563,66 @@ button:hover {
   margin-top: 12px;
 }
 
+/* Formulario de Caso */
+.case-form {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  background: var(--background-color);
+  padding: 24px 22px;
+  border-radius: 14px;
+  box-shadow: 0 2px 12px rgba(25, 118, 210, 0.07);
+  border: 1.5px solid #e0e0e0;
+}
+.case-form label {
+  font-weight: 600;
+  color: var(--font-color);
+  margin-bottom: 4px;
+  font-size: 1.02em;
+  letter-spacing: 0.2px;
+}
+.case-form input,
+.case-form textarea {
+  width: 100%;
+  padding: 12px 16px;
+  border: 1.5px solid #e0e0e0;
+  border-radius: 8px;
+  font-size: 1rem;
+  background: #f8fafb;
+  color: var(--font-color);
+  font-family: 'Poppins', sans-serif;
+  outline: none;
+  transition: border-color 0.2s, box-shadow 0.2s;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.04);
+  resize: vertical;
+}
+.case-form input:focus,
+.case-form textarea:focus {
+  border-color: var(--primary-color);
+  box-shadow: 0 0 0 2px var(--primary-color), 0 2px 12px rgba(25, 118, 210, 0.07);
+}
+.case-form button {
+  background: var(--secondary-color);
+  color: #fff;
+  font-weight: 600;
+  font-size: 1rem;
+  padding: 10px 22px;
+  border-radius: 24px;
+  cursor: pointer;
+  border: none;
+  transition: background 0.2s, box-shadow 0.2s;
+  margin-top: 8px;
+}
+.case-form button:hover {
+  background: var(--hover-color);
+  box-shadow: 0 2px 8px rgba(107, 175, 82, 0.12);
+}
+#caseStatus {
+  font-size: 0.97em;
+  color: var(--font-muted);
+  margin-left: 12px;
+}
+
 /* Bounce Animation for Loading Dots */
 @keyframes bounce {
   0%,
