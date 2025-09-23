@@ -11,12 +11,14 @@ namespace TextSimilarityApi.Controllers
         private readonly EmbeddingService _embeddingService;
         private readonly EmbeddingRepository _repository;
         private readonly IWebHostEnvironment _env;
+        private readonly TextExtractor _textExtractor;
 
-        public EmbeddingController(EmbeddingService embeddingService, EmbeddingRepository repository, IWebHostEnvironment env)
+        public EmbeddingController(EmbeddingService embeddingService, EmbeddingRepository repository, IWebHostEnvironment env, TextExtractor textExtractor)
         {
             _embeddingService = embeddingService;
             _repository = repository;
             _env = env;
+            _textExtractor = textExtractor;
         }
 
         [HttpPost("upload")]
@@ -40,7 +42,7 @@ namespace TextSimilarityApi.Controllers
             string text;
             try
             {
-                text = TextExtractor.ExtractText(filePath);
+                text = await _textExtractor.ExtractTextAsync(filePath);
             }
             catch (NotSupportedException ex)
             {

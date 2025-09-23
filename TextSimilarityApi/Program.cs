@@ -20,6 +20,9 @@ builder.Services.AddSwaggerGen();
 builder.Services.AddSingleton<EmbeddingService>();
 builder.Services.AddSingleton<EmbeddingRepository>();
 
+builder.Services.AddSingleton<AzureOcrService>();
+builder.Services.AddScoped<TextExtractor>();
+
 var app = builder.Build();
 
 app.UseSwagger();

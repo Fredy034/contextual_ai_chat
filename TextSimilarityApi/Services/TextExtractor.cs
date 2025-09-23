@@ -3,47 +3,67 @@ using ExcelDataReader;              // para .xls/.xlsx
 using NPOI.XWPF;                    // para .doc (HWPF)
 using NPOI.XWPF.Extractor;          // WordExtractor
 using NPOI.XWPF.UserModel;
+using Tesseract;                    // para OCR en imágenes
+using UglyToad.PdfPig;              // para .pdf
 using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Text;
 using System.Text.RegularExpressions;
-using UglyToad.PdfPig;
-using UglyToad.PdfPig.Util;
 
 namespace TextSimilarityApi.Services
 {
-    public static class TextExtractor
+    public class TextExtractor
     {
-        // Registrar proveedor de codificaciones requerido por ExcelDataReader (para formatos antiguos)
-        static TextExtractor()
+        public TextExtractor()
         {
             System.Text.Encoding.RegisterProvider(System.Text.CodePagesEncodingProvider.Instance);
         }
 
-        public static string ExtractText(string filePath)
+        public async Task<string> ExtractTextAsync(string filePath)
         {
             var extension = Path.GetExtension(filePath).ToLowerInvariant();
 
             try
             {
-                return extension switch
+                switch (extension)
                 {
-                    ".txt" => File.ReadAllText(filePath),
-                    ".pdf" => ExtractTextFromPdf(filePath),
-                    ".docx" => ExtractTextFromDocx(filePath),
-                    ".doc" => ExtractTextFromDoc(filePath),
-                    ".xlsx" => ExtractTextFromExcel(filePath),
-                    ".xls" => ExtractTextFromExcel(filePath),
-                    ".csv" => ExtractTextFromCsv(filePath),
-                    _ => throw new NotSupportedException($"Formato no soportado: {extension}")
-                };
+                    case ".txt":
+                        return await File.ReadAllTextAsync(filePath);
+
+                    case ".pdf":
+                        return ExtractTextFromPdf(filePath);
+
+                    case ".docx":
+                        return ExtractTextFromDocx(filePath);
+
+                    case ".doc":
+                        return ExtractTextFromDoc(filePath);
+
+                    case ".xlsx":
+                    case ".xls":
+                        return ExtractTextFromExcel(filePath);
+
+                    case ".csv":
+                        return await File.ReadAllTextAsync(filePath);
+
+                    case ".png":
+                    case ".jpg":
+                    case ".jpeg":
+                    case ".gif":
+                    case ".bmp":
+                    case ".tiff":
+                        //return await _azureOcrService.ReadTextFromFileAsync(filePath, "es");
+                        return ExtractTextFromImageTesseract(filePath);
+
+                    default:
+                        throw new NotSupportedException($"Formato no soportado: {extension}");
+                }
             }
             catch (Exception ex)
             {
-                // Loguea para diagnóstico (puedes reemplazar con ILogger si lo prefieres)
                 Console.WriteLine($"[TextExtractor] Error extrayendo '{filePath}': {ex.Message}");
-                throw; // re-lanzar para que el controlador decida cómo manejarlo
+                throw;
             }
         }
 
@@ -76,12 +96,6 @@ namespace TextSimilarityApi.Services
             return text ?? string.Empty;
         }
 
-        private static string ExtractTextFromCsv(string filePath)
-        {
-            // Leer todo el CSV (si quieres más control usa CsvHelper)
-            return File.ReadAllText(filePath);
-        }
-
         private static string ExtractTextFromExcel(string filePath)
         {
             // ExcelDataReader: creamos un reader y recorremos filas/columnas concatenando valores.
@@ -89,13 +103,10 @@ namespace TextSimilarityApi.Services
             using var reader = ExcelReaderFactory.CreateReader(stream);
 
             var sb = new StringBuilder();
-            // Recorremos todas las hojas
             do
             {
-                // recorrer filas
                 while (reader.Read())
                 {
-                    // reader.FieldCount puede ser 0 en algunas filas; iterar columnas válidas
                     var values = new List<string>();
                     for (int c = 0; c < reader.FieldCount; c++)
                     {
@@ -103,7 +114,6 @@ namespace TextSimilarityApi.Services
                         if (cell != null)
                         {
                             var s = cell.ToString();
-                            // Limpiar espacios excesivos y saltos de línea dentro de celdas
                             s = Regex.Replace(s, @"\r\n?|\n", " ");
                             s = s.Trim();
                             if (!string.IsNullOrEmpty(s))
@@ -117,8 +127,45 @@ namespace TextSimilarityApi.Services
 
             var result = sb.ToString();
 
-            // Opcional: truncar si es muy largo (pero en general querrás todo el texto)
             return result;
+        }
+
+        private static string ExtractTextFromImageTesseract(string filePath)
+        {
+            var thisPath = AppContext.BaseDirectory; // normalmente bin/<...>
+            var tessDataPath = Path.Combine(thisPath, "tessdata");
+
+            if (!Directory.Exists(tessDataPath))
+            {
+                tessDataPath = Path.Combine(Directory.GetCurrentDirectory(), "tessdata");
+            }
+
+            var languages = "spa+eng";
+
+            try
+            {
+                using var engine = new TesseractEngine(tessDataPath, languages, EngineMode.Default);
+                using var img = Pix.LoadFromFile(filePath);
+                using var page = engine.Process(img);
+                var ocrText = page.GetText() ?? string.Empty;
+                var meanConfidence = page.GetMeanConfidence();
+
+                var snippet = ocrText.Length > 500 ? ocrText.Substring(0, 500) + "..." : ocrText;
+
+                var sb = new StringBuilder();
+                sb.AppendLine("[OCR extraído de imagen]");
+                sb.AppendLine(snippet);
+                sb.AppendLine();
+                sb.AppendLine($"[OCR Confidence: {meanConfidence:0.00}]");
+                sb.AppendLine($"[Imagen: {Path.GetFileName(filePath)}, Tamaño: {new FileInfo(filePath).Length / 1024} KB]");
+
+                return sb.ToString();
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"[TextExtractor][OCR] Error: {ex}");
+                throw;
+            }
         }
     }
 }
