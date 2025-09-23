@@ -35,9 +35,9 @@ namespace TextSimilarityApi.Services
             return json["data"]?[0]?["embedding"]?.Select(v => (float)v).ToArray() ?? Array.Empty<float>();
         }
 
-        public async Task<string> GetRespuestaAsync(string texto, string question, string filename)
+        public async Task<string> GetRespuestaAsync(string contexto, string question, string filename)
         {
-            var contextText = string.Join("\n---\n", texto);
+            var contextText = contexto ?? "";
 
             var deployment = "gpt-4.1-nano";
             var apiVersion = "2025-01-01-preview";
@@ -67,12 +67,11 @@ namespace TextSimilarityApi.Services
             using var doc = JsonDocument.Parse(json);
             var answer = doc.RootElement.GetProperty("choices")[0].GetProperty("message").GetProperty("content").GetString();
 
-            // string _documento = $"<br> <a target=\"_blank\" href=\"https://ch-npl-d5djc6cafehnfgf7.eastus-01.azurewebsites.net/Embedding/download?name={filename}&download=false\" > Ver documento</a>";
-            string _documento = $"<br> <a target=\"_blank\" href=\"https://localhost:7180/Embedding/download?name={filename}&download=false\" > Ver documento</a>";
-            if (question.ToLower().Contains("hola"))
-                _documento = "";
-            if (answer != null && answer.Contains("No hay información suficiente"))
-                _documento = "";
+            // string _documento = $"<br> <a target=\"_blank\" href=\"https://ch-npl-d5djc6cafehnfgf7.eastus-01.azurewebsites.net/Embedding/download?name={filename}&download=false\">Ver documento</a>";
+            string _documento = $"<br> <a target=\"_blank\" href=\"https://localhost:7180/Embedding/download?name={filename}&download=false\">Ver documento</a>";
+            
+            if (question.ToLower().Contains("hola")) _documento = "";
+            if (answer != null && answer.Contains("No hay información suficiente")) _documento = "";
 
             return (answer?.Replace("\n", "<br>") ?? "") + _documento;
         }
@@ -96,7 +95,7 @@ namespace TextSimilarityApi.Services
              new { role = "user", content = finalPrompt }
 
              },
-                temperature = 0
+                temperature = 0.3
             };
 
             var content = new StringContent(JsonSerializer.Serialize(requestBody), Encoding.UTF8, "application/json");

@@ -102,6 +102,9 @@ namespace TextSimilarityApi.Controllers
         [HttpPost("search")]
         public async Task<IActionResult> Search([FromBody] QueryRequest request)
         {
+            if (string.IsNullOrWhiteSpace(request.Query))
+                return BadRequest("Query is required.");
+
             var queryEmbedding = await _embeddingService.GetEmbeddingAsync(request.Query);
             var storedEmbeddings = _repository.GetAllEmbeddings();
 
@@ -113,15 +116,16 @@ namespace TextSimilarityApi.Controllers
                     e.Text
                 })
                 .OrderByDescending(e => e.Similarity)
-                .ToList()
                 .FirstOrDefault();
 
-            var _respuesta = await _embeddingService.GetRespuestaAsync(bestMatch?.Text, request.Query, bestMatch?.FileName);
+            string historyText = request.HistoryText ?? string.Join("\n---\n", request.History.Select(h => $"{h.Role.ToUpper()}: {h.Content}"));
+            var combined = $"{historyText}\n\nDocumento:\n{bestMatch?.Text ?? ""}";
 
-            return Ok(new
-            {
-                results = _respuesta
-            });
+            if (combined.Length > 16000) combined = combined.Substring(combined.Length - 16000);
+
+            var _respuesta = await _embeddingService.GetRespuestaAsync(combined, request.Query, bestMatch?.FileName);
+
+            return Ok(new { results = _respuesta });
         }
 
         [HttpPost("searchweb")]
@@ -168,8 +172,15 @@ namespace TextSimilarityApi.Controllers
         }
     }
 
+    public class ChatMessageDTO {
+        public string Role { get; set; } = string.Empty;
+        public string Content { get; set; } = string.Empty;
+    }
+
     public class QueryRequest
     {
-        public string Query { get; set; }
+        public string Query { get; set; } = String.Empty;
+        public List<ChatMessageDTO> History { get; set; } = new();
+        public string? HistoryText { get; set; }
     }
 }
