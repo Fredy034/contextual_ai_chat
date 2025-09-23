@@ -6,6 +6,21 @@ try {
   });
 } catch {}
 
+const conversationHistory = [];
+
+// agrega mensaje al historial respetando límite
+function pushHistory(role, content, maxMessages = 20) {
+  conversationHistory.push({ role, content });
+  while (conversationHistory.length > maxMessages) conversationHistory.shift();
+}
+
+// construir texto de contexto truncado por caracteres
+function buildHistoryText(maxChars = 6000) {
+  let text = conversationHistory.map((m) => `${m.role.toUpperCase()}: ${m.content}`).join('\n---\n');
+  if (text.length <= maxChars) return text;
+  return text.slice(-maxChars);
+}
+
 function parseSimpleMarkdown(text) {
   // Negrilla **texto**
   text = text.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
@@ -48,9 +63,11 @@ function addChatMessage(text, sender, format = 'plain') {
   if (sender === 'user') {
     message.classList.add('chat-user');
     message.innerHTML = text;
+    pushHistory('user', text);
   } else {
     message.classList.add('chat-system');
     message.innerHTML = format === 'markdown' ? parseSimpleMarkdown(text) : text;
+    pushHistory('assistant', text);
   }
   chat.appendChild(message);
   chat.scrollTop = chat.scrollHeight;
@@ -88,13 +105,22 @@ async function sendChatMessage({
   if (!userText) return;
   addChatMessage(userText, 'user');
   addLoadingIndicator();
+
+  // Construir payload con History limitado
+  const finalPayload = {
+    ...payload,
+    Query: userText,
+    History: conversationHistory,
+    HistoryText: buildHistoryText(6000),
+  };
+
   const startTime = Date.now();
   let responseText = '';
   try {
     const response = await fetch(endpoint, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload),
+      body: JSON.stringify(finalPayload),
     });
     const data = await response.json();
     responseText = data[responseKey] || data.response || 'Sin respuesta.';
