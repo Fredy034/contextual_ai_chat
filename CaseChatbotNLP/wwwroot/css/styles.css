@@ -145,7 +145,7 @@ button:hover {
 #chat-messages {
   height: 100%;
   max-height: calc(100vh - 170px);
-  padding: 24px 18px;
+  padding: 18px;
   display: flex;
   flex-direction: column;
   gap: 10px;
@@ -537,6 +537,10 @@ button:hover {
   /* background: #f0fff4; */
   border-left: 6px solid #6baf52;
 }
+.doc-card.doc-img {
+  /* background: #fffbe6; */
+  border-left: 6px solid var(--accent-4);
+}
 .doc-card.doc-other {
   /* background: #f8fafc; */
   border-left: 6px solid #bdbdbd;
@@ -564,6 +568,13 @@ button:hover {
 }
 
 /* Formulario de Caso */
+.document-options {
+  height: 40px;
+  display: flex;
+  gap: 12px;
+  flex: 1;
+}
+
 .case-form {
   display: flex;
   flex-direction: column;
@@ -593,7 +604,7 @@ button:hover {
   font-family: 'Poppins', sans-serif;
   outline: none;
   transition: border-color 0.2s, box-shadow 0.2s;
-  box-shadow: 0 1px 4px rgba(0,0,0,0.04);
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.04);
   resize: vertical;
 }
 .case-form input:focus,
@@ -648,6 +659,10 @@ button:hover {
   .navbar-icon {
     width: 44px;
   }
+
+  #chat-messages {
+    max-height: calc(100vh - 150px);
+  }
 }
 
 @media (max-width: 768px) {
@@ -697,7 +712,7 @@ button:hover {
   }
 
   .input-group {
-    width: calc(100% - 24px);
+    width: calc(100% - 96px);
     bottom: 12px;
   }
 
@@ -728,5 +743,15 @@ button:hover {
   .file-label {
     width: 100%;
     justify-content: center;
+  }
+}
+
+@media (max-width: 480px) {
+  #chat-messages {
+    padding: 18px 0;
+  }
+
+  .input-group {
+    width: calc(100% - 36px);
   }
 }

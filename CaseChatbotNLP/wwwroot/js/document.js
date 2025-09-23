@@ -24,13 +24,14 @@ export async function loadDocuments(containerId = 'documentsList') {
         const fileName = d.fileName ?? d.FileName ?? d.File ?? 'sin-nombre';
         const snippet = d.snippet ?? d.Snippet ?? d.SnippetText ?? '';
 
-        // Extensión y clase
+        // Extensión y clase personalizada
         const ext = (fileName.split('.').pop() || '').toLowerCase();
         let extClass = '';
         if (['txt'].includes(ext)) extClass = 'doc-txt';
         else if (['pdf'].includes(ext)) extClass = 'doc-pdf';
         else if (['doc', 'docx'].includes(ext)) extClass = 'doc-doc';
         else if (['xls', 'xlsx', 'csv'].includes(ext)) extClass = 'doc-xls';
+        else if (['jpg', 'jpeg', 'png', 'gif', 'bmp', 'tiff'].includes(ext)) extClass = 'doc-img';
         else extClass = 'doc-other';
 
         // URLs: prefer previewUrl/downloadUrl del backend, si no existen construirlas
