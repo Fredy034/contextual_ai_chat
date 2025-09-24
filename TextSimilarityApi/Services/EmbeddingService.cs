@@ -78,35 +78,32 @@ namespace TextSimilarityApi.Services
 
         public async Task<string> GetRespuestaWebAsync(string question)
         {
+            var contextText = question ?? "";
 
             var deployment = "gpt-4.1-nano";
             var apiVersion = "2025-01-01-preview";
 
-            var finalPrompt = $@"
-            Eres un asistente que responde preguntas.
-           
-            Pregunta: {question}";
+            var systemPrompt = "Eres un asistente que responde preguntas.";
+            var userMessage = $"Contexto: {contextText}";
 
-            var requestBody = new
-            {
-                messages = new[]
-            {
-             new { role = "system", content = "" },
-             new { role = "user", content = finalPrompt }
-
-             },
-                temperature = 0.3
+            var requestBody = new {
+                messages = new object[]
+                {
+                    new { role = "system", content = systemPrompt },
+                    new { role = "user", content = userMessage }
+                },
+                temperature = 0
             };
 
             var content = new StringContent(JsonSerializer.Serialize(requestBody), Encoding.UTF8, "application/json");
-
             var response = await _client.PostAsync($"/openai/deployments/{deployment}/chat/completions?api-version={apiVersion}", content);
             response.EnsureSuccessStatusCode();
 
             var json = await response.Content.ReadAsStringAsync();
             using var doc = JsonDocument.Parse(json);
-           
-            return doc.RootElement.GetProperty("choices")[0].GetProperty("message").GetProperty("content").GetString().Replace("\n","<br>") + "<br>";
+            var answer = doc.RootElement.GetProperty("choices")[0].GetProperty("message").GetProperty("content").GetString();
+
+            return answer?.Replace("\n", "<br>") ?? "";
         }
     }
 }
