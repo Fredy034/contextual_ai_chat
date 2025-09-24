@@ -42,7 +42,12 @@
             <label for="fileInput" class="file-label">
               <span class="file-icon">&#128194;</span>
               <span class="file-label-text">Selecciona un archivo</span>
-              <input type="file" id="fileInput" style="display: none" accept=".txt,.pdf,.doc,.docx,.xls,.xlsx,.csv,.jpg,.jpeg,.png,.gif,.bmp,.tiff" />
+              <input
+                type="file"
+                id="fileInput"
+                style="display: none"
+                accept=".txt,.pdf,.doc,.docx,.xls,.xlsx,.csv,.jpg,.jpeg,.png,.gif,.bmp,.tiff"
+              />
             </label>
             <span id="fileName" class="file-name"></span>
           </div>
@@ -88,6 +93,19 @@
           <h2>Documentos Subidos</h2>
           <button id="btnRefresh">Refrescar</button>
         </div>
+        
+        <!-- Filtros de documentos -->
+        <section class="filter-group">
+          <span>Filtrar por tipo:</span>
+          <button class="btn-secondary" data-filter="all" id="filterAll">Todos</button>
+          <button class="btn-secondary" data-filter="img" id="filterImg">Imágenes</button>
+          <button class="btn-secondary" data-filter="pdf" id="filterPdf">PDF</button>
+          <button class="btn-secondary" data-filter="doc" id="filterDoc">Word</button>
+          <button class="btn-secondary" data-filter="xls" id="filterXls">Excel/CSV</button>
+          <button class="btn-secondary" data-filter="txt" id="filterTxt">TXT</button>
+          <button class="btn-secondary" data-filter="other" id="filterOther">Otros</button>
+        </section>
+
         <div id="documentsList" class="documents-grid"></div>
       </section>
     </main>

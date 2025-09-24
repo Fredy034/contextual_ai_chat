@@ -567,6 +567,19 @@ button:hover {
   margin-top: 12px;
 }
 
+.filter-group {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 18px;
+}
+.filter-group .btn-secondary.active {
+  background: var(--hover-color);
+  color: #fff;
+  border-color: var(--hover-color);
+  box-shadow: 0 2px 8px rgba(107, 175, 82, 0.12);
+}
+
 /* Formulario de Caso */
 .document-options {
   height: 40px;

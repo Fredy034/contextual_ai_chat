@@ -18,27 +18,52 @@ export async function loadDocuments(containerId = 'documentsList') {
       return;
     }
 
-    container.innerHTML = data
+    // Filtro activo
+    let activeFilter = window.__docFilter || 'all';
+
+    // Agrupación de extensiones
+    const extGroups = {
+      img: ['jpg', 'jpeg', 'png', 'gif', 'bmp', 'tiff'],
+      pdf: ['pdf'],
+      doc: ['doc', 'docx'],
+      xls: ['xls', 'xlsx', 'csv'],
+      txt: ['txt'],
+      other: [], // se asigna después
+    };
+
+    // Filtrar documentos
+    const filtered = data.filter((d) => {
+      if (activeFilter === 'all') return true;
+      const fileName = d.fileName ?? d.FileName ?? d.File ?? '';
+      const ext = (fileName.split('.').pop() || '').toLowerCase();
+      if (extGroups[activeFilter]) return extGroups[activeFilter].includes(ext);
+      // Otros: si no está en ningún grupo
+      if (activeFilter === 'other') {
+        return !Object.values(extGroups).flat().includes(ext);
+      }
+      return true;
+    });
+
+    if (filtered.length === 0) {
+      container.innerHTML = '<p class="muted">No hay documentos para este filtro.</p>';
+      return;
+    }
+
+    container.innerHTML = filtered
       .map((d) => {
-        // Nombre y snippet (soporte distintos formatos de la respuesta)
         const fileName = d.fileName ?? d.FileName ?? d.File ?? 'sin-nombre';
         const snippet = d.snippet ?? d.Snippet ?? d.SnippetText ?? '';
-
-        // Extensión y clase personalizada
         const ext = (fileName.split('.').pop() || '').toLowerCase();
         let extClass = '';
-        if (['txt'].includes(ext)) extClass = 'doc-txt';
-        else if (['pdf'].includes(ext)) extClass = 'doc-pdf';
-        else if (['doc', 'docx'].includes(ext)) extClass = 'doc-doc';
-        else if (['xls', 'xlsx', 'csv'].includes(ext)) extClass = 'doc-xls';
-        else if (['jpg', 'jpeg', 'png', 'gif', 'bmp', 'tiff'].includes(ext)) extClass = 'doc-img';
+        if (extGroups.txt.includes(ext)) extClass = 'doc-txt';
+        else if (extGroups.pdf.includes(ext)) extClass = 'doc-pdf';
+        else if (extGroups.doc.includes(ext)) extClass = 'doc-doc';
+        else if (extGroups.xls.includes(ext)) extClass = 'doc-xls';
+        else if (extGroups.img.includes(ext)) extClass = 'doc-img';
         else extClass = 'doc-other';
 
-        // URLs: prefer previewUrl/downloadUrl del backend, si no existen construirlas
         const previewUrl = d.previewUrl ?? `${URL_API}/download?name=${encodeURIComponent(fileName)}`;
         const downloadUrl = d.downloadUrl ?? `${URL_API}/download?name=${encodeURIComponent(fileName)}&download=true`;
-
-        // Codificar la previewUrl para evitar problemas con comillas en el atributo onclick
         const previewUrlEncoded = encodeURIComponent(previewUrl);
 
         return `
@@ -57,6 +82,29 @@ export async function loadDocuments(containerId = 'documentsList') {
       .join('');
   } catch (err) {
     container.innerHTML = `<p class="error">Error: ${escapeHtml(err.message)}</p>`;
+  }
+
+  // Conectar filtros
+  if (!window.__docFilterInit) {
+    window.__docFilterInit = true;
+    const filterBtns = ['filterAll', 'filterImg', 'filterPdf', 'filterDoc', 'filterXls', 'filterTxt', 'filterOther'];
+    filterBtns.forEach((id) => {
+      const btn = document.getElementById(id);
+      if (btn) {
+        btn.addEventListener('click', () => {
+          window.__docFilter = btn.getAttribute('data-filter');
+          filterBtns.forEach((bid) => {
+            const b = document.getElementById(bid);
+            if (b) b.classList.remove('active');
+          });
+          btn.classList.add('active');
+          loadDocuments(containerId);
+        });
+      }
+    });
+    // Marcar "Todos" como activo por defecto
+    const allBtn = document.getElementById('filterAll');
+    if (allBtn) allBtn.classList.add('active');
   }
 }
 
