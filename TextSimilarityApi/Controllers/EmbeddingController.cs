@@ -1,6 +1,7 @@
-﻿using Microsoft.AspNetCore.Mvc;
+﻿using Microsoft.AspNetCore.Hosting;
+using Microsoft.AspNetCore.Mvc;
+using NPOI.SS.Formula.Functions;
 using TextSimilarityApi.Services;
-using Microsoft.AspNetCore.Hosting;
 
 namespace TextSimilarityApi.Controllers
 {
@@ -133,12 +134,25 @@ namespace TextSimilarityApi.Controllers
         [HttpPost("searchweb")]
         public async Task<IActionResult> searchweb([FromBody] QueryRequest request)
         {
-            var _respuesta = await _embeddingService.GetRespuestaWebAsync(request.Query);
+            if (string.IsNullOrWhiteSpace(request.Query))
+                return BadRequest("Query is required.");
 
-            return Ok(new
+            var webResult = string.Empty;
+
+            string historyText = request.HistoryText ?? (request.History != null && request.History.Any() ? string.Join("\n---\n", request.History.Select(h => $"{h.Role.ToUpper()}: {h.Content}")) : string.Empty);
+            if (historyText.Length > 16000) historyText = historyText.Substring(historyText.Length - 16000);
+
+            try
             {
-                results = _respuesta
-            });
+                webResult = await _embeddingService.GetRespuestaWebAsync(historyText) ?? string.Empty;
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"[searchweb] Error al obtener webResult: {ex}");
+                webResult = "";
+            }
+
+            return Ok(new { results = webResult });
         }
 
         [HttpGet("documents")]
