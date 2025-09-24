@@ -24,6 +24,16 @@
 html {
   font-family: 'Poppins', sans-serif;
   scroll-behavior: smooth;
+  overflow-x: hidden;
+  overflow-y: scroll;
+}
+html::-webkit-scrollbar {
+  width: 8px;
+  background: var(--background-color);
+}
+html::-webkit-scrollbar-thumb {
+  background: #e0e0e0;
+  border-radius: 8px;
 }
 
 body {
@@ -756,6 +766,11 @@ button:hover {
   .file-label {
     width: 100%;
     justify-content: center;
+  }
+
+  .filter-group {
+    flex-wrap: wrap;
+    gap: 8px;
   }
 }
 
