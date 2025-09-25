@@ -13,52 +13,77 @@ namespace TextSimilarityApi.Controllers
         private readonly EmbeddingRepository _repository;
         private readonly IWebHostEnvironment _env;
         private readonly TextExtractor _textExtractor;
+        private readonly InMemoryDocumentStore _memoryStore;
 
-        public EmbeddingController(EmbeddingService embeddingService, EmbeddingRepository repository, IWebHostEnvironment env, TextExtractor textExtractor)
+        public EmbeddingController(EmbeddingService embeddingService, EmbeddingRepository repository, IWebHostEnvironment env, TextExtractor textExtractor, InMemoryDocumentStore memoryStore)
         {
             _embeddingService = embeddingService;
             _repository = repository;
             _env = env;
             _textExtractor = textExtractor;
+            _memoryStore = memoryStore;
         }
 
         [HttpPost("upload")]
-        public async Task<IActionResult> Upload(IFormFile file)
+        public async Task<IActionResult> Upload(IFormFile file, [FromQuery] string? sessionId = null)
         {
             if (file == null || file.Length == 0)
                 return BadRequest("Archivo no válido.");
 
-            // Guardar en ruta absoluta dentro del ContentRootPath
-            var uploadsDir = Path.Combine(_env.ContentRootPath, "Uploads");
-            Directory.CreateDirectory(uploadsDir);
-
             var safeFileName = Path.GetFileName(file.FileName);
-            var filePath = Path.Combine(uploadsDir, safeFileName);
 
-            using (var stream = new FileStream(filePath, FileMode.Create))
-            {
-                await file.CopyToAsync(stream);
-            }
-
-            string text;
+            string extractedText = string.Empty;
+            string tempPath = string.Empty;
             try
             {
-                text = await _textExtractor.ExtractTextAsync(filePath);
+                if (string.IsNullOrEmpty(sessionId))
+                {
+                    var uploadsDir = Path.Combine(_env.ContentRootPath, "Uploads");
+                    Directory.CreateDirectory(uploadsDir);
+                    var filePath = Path.Combine(uploadsDir, safeFileName);
+                    using (var stream = new FileStream(filePath, FileMode.Create))
+                    {
+                        await file.CopyToAsync(stream);
+                    }
+
+                    extractedText = await _textExtractor.ExtractTextAsync(filePath);
+                    var embedding = await _embeddingService.GetEmbeddingAsync(extractedText);
+                    _repository.SaveEmbedding(safeFileName, embedding, extractedText);
+
+                    return Ok(new { message = $"Archivo '{safeFileName}' procesado y guardado." });
+                } 
+                else
+                {
+                    tempPath = Path.Combine(Path.GetTempPath(), $"{Guid.NewGuid()}_{safeFileName}");
+                    using (var stream = new FileStream(tempPath, FileMode.Create))
+                    {
+                        await file.CopyToAsync(stream);
+                    }
+
+                    extractedText = await _textExtractor.ExtractTextAsync(tempPath);
+                    var embedding = await _embeddingService.GetEmbeddingAsync(extractedText);
+
+                    // Guardar en memoria
+                    _memoryStore.Add(sessionId, safeFileName, embedding, extractedText);
+
+                    // Eliminar archivo temporal
+                    try { System.IO.File.Delete(tempPath); }
+                    catch { /* Ignorar errores al eliminar temp */ }
+
+                    return Ok(new { message = $"Archivo '{safeFileName}' procesado y guardado en memoria para sesión '{sessionId}'." });
+                }
             }
             catch (NotSupportedException ex)
             {
+                if (!string.IsNullOrEmpty(tempPath) && System.IO.File.Exists(tempPath)) System.IO.File.Delete(tempPath);
                 return BadRequest(new { error = ex.Message });
             }
             catch (Exception ex)
             {
                 Console.WriteLine($"[Upload] Error extrayendo texto: {ex}");
+                if (!string.IsNullOrEmpty(tempPath) && System.IO.File.Exists(tempPath)) System.IO.File.Delete(tempPath);
                 return StatusCode(500, new { error = "Error procesando el archivo: " + ex.Message });
             }
-
-            var embedding = await _embeddingService.GetEmbeddingAsync(text);
-            _repository.SaveEmbedding(safeFileName, embedding, text);
-
-            return Ok(new { message = $"Archivo '{safeFileName}' procesado y guardado." });
         }
 
         [HttpGet("download")]
@@ -111,11 +136,17 @@ namespace TextSimilarityApi.Controllers
             var queryEmbedding = await _embeddingService.GetEmbeddingAsync(request.Query);
             var storedEmbeddings = _repository.GetAllEmbeddings();
 
-            var bestMatch = storedEmbeddings
+            var sessionEmbeddings = request.SessionId != null ? _memoryStore.GetAllEmbeddings(request.SessionId) : new List<(string, float[], string)>();
+
+            var allCandidates = new List<(string FileName, float[] Vector, string Text)>();
+            allCandidates.AddRange(storedEmbeddings);
+            allCandidates.AddRange(sessionEmbeddings);
+
+            var bestMatch = allCandidates
                 .Select(e => new
                 {
                     e.FileName,
-                    Similarity = SimilarityCalculator.CosineSimilarity(queryEmbedding, e.Vector),
+                    Similarity = e.Vector != null && e.Vector.Length > 0 ?  SimilarityCalculator.CosineSimilarity(queryEmbedding, e.Vector) : -1.0,
                     e.Text
                 })
                 .OrderByDescending(e => e.Similarity)
@@ -186,6 +217,21 @@ namespace TextSimilarityApi.Controllers
 
             return Ok(result);
         }
+
+        [HttpGet("documents/session")]
+        public IActionResult GetSessionDocuments([FromQuery] string sessionId)
+        {
+            if (string.IsNullOrWhiteSpace(sessionId)) return BadRequest("SessionId is required.");
+            var docs = _memoryStore.GetDocuments(sessionId);
+            var result = docs.Select(d => new { 
+                FileName = d.FileName,
+                Snippet = d.Snippet,
+                previewUrl = (string?)null,
+                downloadUrl = (string?)null
+            });
+
+            return Ok(result);
+        }
     }
 
     public class ChatMessageDTO {
@@ -198,5 +244,6 @@ namespace TextSimilarityApi.Controllers
         public string Query { get; set; } = String.Empty;
         public List<ChatMessageDTO> History { get; set; } = new();
         public string? HistoryText { get; set; }
+        public string? SessionId { get; set; }
     }
 }
