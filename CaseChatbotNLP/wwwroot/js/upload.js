@@ -21,6 +21,34 @@ if (fileInput && fileNameSpan) {
   });
 }
 
+export async function uploadFileForSession(file) {
+  if (!file) return { ok: false, error: 'No file provided' };
+
+  const formData = new FormData();
+  formData.append('file', file);
+
+  try {
+    const sessionId = localStorage.getItem('chatSessionId') || '';
+    const url = sessionId ? `${URL_API}/upload?sessionId=${encodeURIComponent(sessionId)}` : `${URL_API}/upload`;
+
+    const response = await fetch(url, {
+      method: 'POST',
+      body: formData,
+    });
+
+    if (!response.ok) {
+      const text = await response.text();
+      return { ok: false, error: text || 'Error en la subida' };
+    }
+
+    const data = await response.json();
+
+    return { ok: true, data };
+  } catch (err) {
+    return { ok: false, error: err.message || String(err) };
+  }
+}
+
 export async function uploadFile() {
   statusElement.textContent = '';
   if (!fileInput || !fileInput.files[0]) {
@@ -37,7 +65,10 @@ export async function uploadFile() {
   formData.append('file', fileInput.files[0]);
 
   try {
-    const response = await fetch(`${URL_API}/upload`, {
+    const sessionId = localStorage.getItem('chatSessionId') || '';
+    const url = sessionId ? `${URL_API}/upload?sessionId=${encodeURIComponent(sessionId)}` : `${URL_API}/upload`;
+
+    const response = await fetch(url, {
       method: 'POST',
       body: formData,
     });

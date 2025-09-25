@@ -6,6 +6,16 @@ try {
   });
 } catch {}
 
+function getSessionId() {
+  let sid = localStorage.getItem('chatSessionId');
+  if (!sid) {
+    if (crypto && crypto.randomUUID) sid = crypto.randomUUID();
+    else sid = 'sid-' + Date.now() + '-' + Math.floor(Math.random() * 10000);
+    localStorage.setItem('chatSessionId', sid);
+  }
+  return sid;
+}
+
 const conversationHistory = [];
 
 // agrega mensaje al historial respetando límite
@@ -106,12 +116,16 @@ async function sendChatMessage({
   addChatMessage(userText, 'user');
   addLoadingIndicator();
 
+  const lastUploaded = window.__lastUploadedFile && window.__lastUploadedFile.name ? window.__lastUploadedFile.name : null;
+
   // Construir payload con History limitado
   const finalPayload = {
     ...payload,
     Query: userText,
     History: conversationHistory,
     HistoryText: buildHistoryText(6000),
+    SessionId: getSessionId(),
+    UploadFileName: lastUploaded,
   };
 
   const startTime = Date.now();
@@ -184,7 +198,7 @@ if (document.getElementById('request-type')) {
       selectOptions.querySelectorAll('li').forEach((el) => el.classList.remove('selected'));
       li.classList.add('selected');
       selectInput.value = li.getAttribute('data-value');
-      selectLabel.textContent = li.textContent;
+      if (selectLabel) selectLabel.textContent = li.textContent;
       selectDropdown.classList.remove('open');
     });
   });
