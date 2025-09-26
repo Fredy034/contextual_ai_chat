@@ -49,20 +49,10 @@
     </div>
 
     <!-- Scripts -->
-    <script>
-      const toggleBtn = document.getElementById('navbar-toggle');
-      const links = document.getElementById('navbar-links');
+    <script type="module">
+      import { initNav } from './js/shared/nav.js';
 
-      toggleBtn.addEventListener('click', function () {
-        links.classList.toggle('show');
-        toggleBtn.classList.toggle('open');
-      });
-      document.addEventListener('click', function (e) {
-        if (!toggleBtn.contains(e.target) && !links.contains(e.target)) {
-          links.classList.remove('show');
-          toggleBtn.classList.remove('open');
-        }
-      });
+      initNav('navbar-toggle', 'navbar-links');
     </script>
     <script src="./js/chat.js"></script>
   </body>

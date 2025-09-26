@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Chat de Consulta</title>
+    <title>Chat de Consulta (Web)</title>
 
     <link rel="stylesheet" href="./css/styles.css" />
   </head>
@@ -27,32 +27,67 @@
       </div>
     </nav>
 
+    <div id="uploadBanner" class="upload-banner" style="display:none"></div>
+
     <div id="chat-container">
       <div id="chat-messages"></div>
+
+      <div class="uploaded-file-info">
+        <div id="uploadedFileInfo" class="uploaded-file-info-content"></div>
+      </div>
+
       <div class="input-group">
+        <div class="select-dropdown">
+          <button id="select-btn" type="button">
+            <span class="select-arrow">&#43;</span>
+          </button>
+
+          <ul id="select-options" class="select-options select-options-files">
+            <li data-value="0" class="selected" id="addContextLi" style="cursor: pointer">
+              <i class="fa-solid fa-paperclip"></i>
+              Agregar Contexto
+            </li>
+
+            <input
+              type="file"
+              id="fileInput"
+              style="display: none"
+              accept=".txt,.pdf,.doc,.docx,.xls,.xlsx,.csv,.jpg,.jpeg,.png,.gif,.bmp,.tiff"
+            />
+          </ul>
+          <input type="hidden" id="request-type" value="0" />
+        </div>
+
         <input type="text" id="user-input" placeholder="Escribe tu pregunta..." />
-        <button onclick="sendMessage('web')">Enviar</button>
+        <button class="send-button" onclick="sendMessage('web')">
+          <span class="send-button-text">Enviar</span>
+          <i class="fa-solid fa-arrow-up icon"></i>
+        </button>
       </div>
     </div>
 
-    <!-- Scripts -->
-    <script>
+    <!-- Scripts: upload handler + chat -->
+    <script type="module">
+      import { initNav } from './js/shared/nav.js';
+      import { initUploadUI } from './js/shared/fileUI.js';
+
       window.CHAT_TYPE = 'web';
 
-      const toggleBtn = document.getElementById('navbar-toggle');
-      const links = document.getElementById('navbar-links');
+      // Init nav
+      initNav('navbar-toggle', 'navbar-links');
 
-      toggleBtn.addEventListener('click', function () {
-        links.classList.toggle('show');
-        toggleBtn.classList.toggle('open');
-      });
-      document.addEventListener('click', function (e) {
-        if (!toggleBtn.contains(e.target) && !links.contains(e.target)) {
-          links.classList.remove('show');
-          toggleBtn.classList.remove('open');
-        }
+      // Init upload UI (opciones por si quieres otros IDs)
+      initUploadUI({
+        fileInputId: 'fileInput',
+        addContextId: 'addContextLi',
+        uploadBannerId: 'uploadBanner',
+        uploadedFileInfoId: 'uploadedFileInfo',
+        chatMessagesId: 'chat-messages',
+        inputGroupSelector: '.input-group'
       });
     </script>
-    <script src="./js/chat.js" type="module"></script>
+    <script type="module" src="./js/chat.js"></script>
+
+    <script src="https://kit.fontawesome.com/6dc81ce773.js" crossorigin="anonymous"></script>
   </body>
 </html>

@@ -401,17 +401,35 @@ button:hover {
   box-shadow: 0 0 0 2px var(--primary-color), 0 2px 12px rgba(25, 118, 210, 0.07);
 }
 
+.voice-message {
+  margin-right: 8px;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+.voice-message button {
+  border-radius: 50%;
+  padding: 5px !important;
+}
+
+.send-button {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
 /* Select Dropdown */
 .select-dropdown {
   position: relative;
 }
 .select-dropdown button {
   background: var(--secondary-color);
-  padding: 8px 18px 8px 16px;
+  padding: 18px !important;
   position: relative;
   transition: background 0.2s;
   display: flex;
   align-items: center;
+  justify-content: center;
   gap: 10px;
   width: 100%;
   box-sizing: border-box;
@@ -856,12 +874,26 @@ button:hover {
     width: 44px;
   }
 
+  .send-button {
+    max-width: 40px;
+    padding: 5px !important;
+    justify-content: center;
+  }
+  .send-button-text {
+    display: none;
+  }
+
   #chat-messages {
     max-height: calc(100vh - 150px);
   }
 }
 
 @media (max-width: 768px) {
+  .upload-banner {
+    top: 57px;
+    padding: 8px 12px;
+  }
+
   .tabladatos {
     display: block;
     overflow-x: auto;
@@ -871,6 +903,13 @@ button:hover {
   .navbar {
     flex-wrap: wrap;
     min-height: 56px;
+  }
+  .navbar-left {
+    flex: 1;
+    justify-content: space-between;
+  }
+  .navbar-title {
+    justify-self: flex-start;
   }
   .navbar-links {
     position: absolute;
@@ -907,6 +946,7 @@ button:hover {
     display: block;
   }
 
+  .uploaded-file-info,
   .input-group {
     width: calc(100% - 96px);
     bottom: 12px;
@@ -918,9 +958,6 @@ button:hover {
   }
   .select-label {
     display: none;
-  }
-  .select-arrow {
-    margin-left: -6px;
   }
   .select-options {
     width: 50vw;
@@ -945,6 +982,11 @@ button:hover {
     flex-wrap: wrap;
     gap: 8px;
   }
+
+  #chat-messages.with-file {
+    max-height: calc(100vh - 215px);
+    padding-bottom: 6px;
+  }
 }
 
 @media (max-width: 480px) {
@@ -952,6 +994,7 @@ button:hover {
     padding: 18px 0;
   }
 
+  .uploaded-file-info,
   .input-group {
     width: calc(100% - 36px);
   }

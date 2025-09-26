@@ -112,22 +112,11 @@
 
     <!-- Scripts -->
     <script type="module">
+      import { initNav } from './js/shared/nav.js';
       import { loadDocuments } from './js/document.js';
       import { uploadFile } from './js/upload.js';
 
-      const toggleBtn = document.getElementById('navbar-toggle');
-      const links = document.getElementById('navbar-links');
-
-      toggleBtn.addEventListener('click', function () {
-        links.classList.toggle('show');
-        toggleBtn.classList.toggle('open');
-      });
-      document.addEventListener('click', function (e) {
-        if (!toggleBtn.contains(e.target) && !links.contains(e.target)) {
-          links.classList.remove('show');
-          toggleBtn.classList.remove('open');
-        }
-      });
+      initNav('navbar-toggle', 'navbar-links');
 
       // Mostrar/ocultar formularios según opción
       const uploadSection = document.getElementById('uploadSection');
@@ -141,7 +130,6 @@
       }
 
       showUploadBtn.addEventListener('click', () => {
-        // Si está visible, ocultar; si está oculto, mostrar
         if (uploadSection.style.display === 'block') {
           uploadSection.style.display = 'none';
         } else {
@@ -158,11 +146,9 @@
         }
       });
 
-      // Inicializar UI
       document.getElementById('btnUpload').addEventListener('click', uploadFile);
       document.getElementById('btnRefresh').addEventListener('click', () => loadDocuments('documentsList'));
 
-      // cargar documentos al inicio
       loadDocuments('documentsList');
     </script>
     <script type="module" src="js/connection.js"></script>
