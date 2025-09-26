@@ -1,5 +1,6 @@
 'use strict';
 import { URL_API } from './connection.js';
+import { escapeAttr, escapeHtml, iconForExt, extGroups } from './shared/utils.js';
 
 export async function loadDocuments(containerId = 'documentsList') {
   const container = document.getElementById(containerId);
@@ -18,26 +19,13 @@ export async function loadDocuments(containerId = 'documentsList') {
       return;
     }
 
-    // Filtro activo
     let activeFilter = window.__docFilter || 'all';
 
-    // Agrupación de extensiones
-    const extGroups = {
-      img: ['jpg', 'jpeg', 'png', 'gif', 'bmp', 'tiff'],
-      pdf: ['pdf'],
-      doc: ['doc', 'docx'],
-      xls: ['xls', 'xlsx', 'csv'],
-      txt: ['txt'],
-      other: [], // se asigna después
-    };
-
-    // Filtrar documentos
     const filtered = data.filter((d) => {
       if (activeFilter === 'all') return true;
       const fileName = d.fileName ?? d.FileName ?? d.File ?? '';
       const ext = (fileName.split('.').pop() || '').toLowerCase();
       if (extGroups[activeFilter]) return extGroups[activeFilter].includes(ext);
-      // Otros: si no está en ningún grupo
       if (activeFilter === 'other') {
         return !Object.values(extGroups).flat().includes(ext);
       }
@@ -54,13 +42,7 @@ export async function loadDocuments(containerId = 'documentsList') {
         const fileName = d.fileName ?? d.FileName ?? d.File ?? 'sin-nombre';
         const snippet = d.snippet ?? d.Snippet ?? d.SnippetText ?? '';
         const ext = (fileName.split('.').pop() || '').toLowerCase();
-        let extClass = '';
-        if (extGroups.txt.includes(ext)) extClass = 'doc-txt';
-        else if (extGroups.pdf.includes(ext)) extClass = 'doc-pdf';
-        else if (extGroups.doc.includes(ext)) extClass = 'doc-doc';
-        else if (extGroups.xls.includes(ext)) extClass = 'doc-xls';
-        else if (extGroups.img.includes(ext)) extClass = 'doc-img';
-        else extClass = 'doc-other';
+        const extClass = iconForExt(ext).classIcon;
 
         const previewUrl = d.previewUrl ?? `${URL_API}/download?name=${encodeURIComponent(fileName)}`;
         const downloadUrl = d.downloadUrl ?? `${URL_API}/download?name=${encodeURIComponent(fileName)}&download=true`;
@@ -108,24 +90,6 @@ export async function loadDocuments(containerId = 'documentsList') {
   }
 }
 
-// helper export for upload to refresh list
 export async function refreshDocuments() {
   await loadDocuments();
-}
-
-// small helper to escape HTML (prevent XSS al mostrar nombres/textos)
-function escapeHtml(unsafe) {
-  if (!unsafe) return '';
-  return String(unsafe)
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
-    .replace(/'/g, '&#039;');
-}
-
-// helper to escape attributes (prevent XSS al mostrar URLs)
-function escapeAttr(s) {
-  if (!s) return '';
-  return String(s).replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 }
