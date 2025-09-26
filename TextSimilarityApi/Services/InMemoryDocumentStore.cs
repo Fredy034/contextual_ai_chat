@@ -22,16 +22,52 @@ namespace TextSimilarityApi.Services
 
         public InMemoryDocumentStore(TimeSpan? ttl = null)
         {
-            _ttl = ttl ?? TimeSpan.FromHours(6); // configurable
+            _ttl = ttl ?? TimeSpan.FromHours(6);
             _cleanupTimer = new Timer(Cleanup, null, _ttl, _ttl);
         }
 
-        public void Add(string sessionId, string fileName, float[] vector, string text)
+        /// <summary>
+        /// Intenta agregar un documento a la sesión.
+        /// Retorna true si se agregó, false si ya existía (texto idéntico).
+        /// </summary>
+        public bool Add(string sessionId, string fileName, float[] vector, string text)
         {
+            if (string.IsNullOrEmpty(sessionId)) return false;
+
             var list = _store.GetOrAdd(sessionId, _ => new List<DocEntry>());
-            lock (list) // proteger lista por sessionId
+            lock (list)
             {
+                var existing = list.FirstOrDefault(d => string.Equals(d.Text, text, StringComparison.Ordinal));
+                if (existing != null)
+                {
+                    existing.CreatedAt = DateTime.UtcNow;
+                    return false;
+                }
+
                 list.Add(new DocEntry { FileName = fileName, Vector = vector, Text = text, CreatedAt = DateTime.UtcNow });
+                return true;
+            }
+        }
+
+        /// <summary>
+        /// Comprueba si ya existe un documento con exactamente el mismo texto en la sesión.
+        /// Si existe, actualiza CreatedAt para refrescar TTL y retorna true.
+        /// </summary>
+        public bool ContainsText(string sessionId, string text)
+        {
+            if (string.IsNullOrEmpty(sessionId) || string.IsNullOrEmpty(text)) return false;
+            if (!_store.TryGetValue(sessionId, out var list)) return false;
+
+            lock (list)
+            {
+                var existing = list.FirstOrDefault(d => string.Equals(d.Text, text, StringComparison.Ordinal));
+                if (existing != null)
+                {
+                    existing.CreatedAt = DateTime.UtcNow;
+                    return true;
+                }
+
+                return false;
             }
         }
 

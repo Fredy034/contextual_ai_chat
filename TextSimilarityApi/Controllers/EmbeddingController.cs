@@ -1,6 +1,7 @@
 ﻿using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc;
 using NPOI.SS.Formula.Functions;
+using System.Text;
 using TextSimilarityApi.Services;
 
 namespace TextSimilarityApi.Controllers
@@ -61,14 +62,22 @@ namespace TextSimilarityApi.Controllers
                     }
 
                     extractedText = await _textExtractor.ExtractTextAsync(tempPath);
+
+                    if (_memoryStore.ContainsText(sessionId, extractedText))
+                    {
+                        try { System.IO.File.Delete(tempPath); } catch { /* */ }
+                        return Ok(new { message = $"Archivo '{safeFileName}' ya existe en la sesión '{sessionId}' (duplicado ignorado)." });
+                    }
+
                     var embedding = await _embeddingService.GetEmbeddingAsync(extractedText);
+                    var added = _memoryStore.Add(sessionId, safeFileName, embedding, extractedText);
 
-                    // Guardar en memoria
-                    _memoryStore.Add(sessionId, safeFileName, embedding, extractedText);
+                    try { System.IO.File.Delete(tempPath); } catch { /* Ignorar errores al eliminar temp */ }
 
-                    // Eliminar archivo temporal
-                    try { System.IO.File.Delete(tempPath); }
-                    catch { /* Ignorar errores al eliminar temp */ }
+                    if (!added)
+                    {
+                        return Ok(new { message = $"Archivo '{safeFileName}' ya existe en la sesión '{sessionId}' (duplicado ignorado)." });
+                    }
 
                     return Ok(new { message = $"Archivo '{safeFileName}' procesado y guardado en memoria para sesión '{sessionId}'." });
                 }
@@ -168,14 +177,50 @@ namespace TextSimilarityApi.Controllers
             if (string.IsNullOrWhiteSpace(request.Query))
                 return BadRequest("Query is required.");
 
-            var webResult = string.Empty;
+            string historyText = request.HistoryText ?? (request.History != null && request.History.Any()
+                ? string.Join("\n---\n", request.History.Select(h => $"{h.Role.ToUpper()}: {h.Content}"))
+                : string.Empty);
 
-            string historyText = request.HistoryText ?? (request.History != null && request.History.Any() ? string.Join("\n---\n", request.History.Select(h => $"{h.Role.ToUpper()}: {h.Content}")) : string.Empty);
-            if (historyText.Length > 16000) historyText = historyText.Substring(historyText.Length - 16000);
+            var sessionDocs = new List<(string FileName, float[] Vector, string Text)>();
+            if (!string.IsNullOrEmpty(request.SessionId))
+            {
+                sessionDocs = _memoryStore.GetAllEmbeddings(request.SessionId) ?? new List<(string, float[], string)>();
+            }
 
+            string sessionText = string.Empty;
+            List<string> includedDocNames = new();
+            if (sessionDocs != null && sessionDocs.Any())
+            {
+                sessionText = string.Join("\n---\n", sessionDocs.Select(d =>
+                {
+                    includedDocNames.Add(d.FileName ?? "sin-nombre");
+                    return $"Documento: {d.FileName}\n{d.Text}";
+                }));
+            }
+
+            var combinedBuilder = new StringBuilder();
+            if (!string.IsNullOrWhiteSpace(historyText))
+            {
+                combinedBuilder.AppendLine(historyText);
+                combinedBuilder.AppendLine();
+            }
+            if (!string.IsNullOrWhiteSpace(sessionText))
+            {
+                combinedBuilder.AppendLine("Documentos de sesión:");
+                combinedBuilder.AppendLine(sessionText);
+                combinedBuilder.AppendLine();
+            }
+            combinedBuilder.AppendLine("Consulta web:");
+            combinedBuilder.AppendLine(request.Query);
+
+            var combined = combinedBuilder.ToString();
+
+            if (combined.Length > 16000) combined = combined.Substring(combined.Length - 16000);
+
+            string webResult = string.Empty;
             try
             {
-                webResult = await _embeddingService.GetRespuestaWebAsync(historyText) ?? string.Empty;
+                webResult = await _embeddingService.GetRespuestaWebAsync(combined) ?? string.Empty;
             }
             catch (Exception ex)
             {
@@ -183,7 +228,7 @@ namespace TextSimilarityApi.Controllers
                 webResult = "";
             }
 
-            return Ok(new { results = webResult });
+            return Ok(new { results = webResult, sessionDocuments = includedDocNames.Distinct().ToList() });
         }
 
         [HttpGet("documents")]
