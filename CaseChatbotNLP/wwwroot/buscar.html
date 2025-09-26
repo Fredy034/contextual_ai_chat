@@ -59,11 +59,13 @@
         </div>
 
         <input type="text" id="user-input" placeholder="Escribe tu pregunta..." />
+
         <div class="voice-message">
           <button id="voiceBtn" aria-label="Mensaje de voz" title="Mensaje de voz">
-            <i class="fa-solid fa-microphone"></i>
+            <i id="voiceIcon" class="fa-solid fa-microphone"></i>
           </button>
         </div>
+
         <button class="send-button" onclick="sendMessage('normal')">
           <span class="send-button-text">Enviar</span>
           <i class="fa-solid fa-arrow-up icon"></i>
@@ -75,6 +77,7 @@
     <script type="module">
       import { initNav } from './js/shared/nav.js';
       import { initUploadUI } from './js/shared/fileUI.js';
+      import { initVoice } from './js/shared/voice.js';
 
       window.CHAT_TYPE = 'normal';
 
@@ -89,6 +92,22 @@
         uploadedFileInfoId: 'uploadedFileInfo',
         chatMessagesId: 'chat-messages',
         inputGroupSelector: '.input-group'
+      });
+
+      // Init voice
+      const voiceController = initVoice({
+        voiceBtnId: 'voiceBtn',
+        voiceIconId: 'voiceIcon',
+        inputId: 'user-input',
+        lang: 'es-ES',
+        continuous: false,
+        interimResults: false,
+        onResult: (transcript) => {
+          document.getElementById('user-input').value = transcript;
+        },
+        onError: (evt) => {
+          console.error('Speech error', evt);
+        }
       });
     </script>
     <script type="module" src="./js/chat.js"></script>

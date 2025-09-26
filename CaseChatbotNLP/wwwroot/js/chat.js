@@ -157,6 +157,34 @@ if (window.CHAT_TYPE) {
     });
     document.getElementById('user-input').value = '';
   };
+} else {
+  document.getElementById('user-input').addEventListener('keypress', function (e) {
+    if (e.key === 'Enter') {
+      const userText = document.getElementById('user-input').value.trim();
+      const tipo = document.getElementById('request-type').value;
+
+      sendChatMessage({
+        endpoint: '/api/chat/ask',
+        payload: { Prompt: userText, tipo },
+        userText,
+        format: tipo == '0' ? 'markdown' : 'plain',
+        responseKey: 'response',
+      });
+      document.getElementById('user-input').value = '';
+    }
+  });
+  window.sendMessage = function () {
+    const userText = document.getElementById('user-input').value.trim();
+    const tipo = document.getElementById('request-type').value;
+    sendChatMessage({
+      endpoint: '/api/chat/ask',
+      payload: { Prompt: userText, tipo },
+      userText,
+      format: tipo == '0' ? 'markdown' : 'plain',
+      responseKey: 'response',
+    });
+    document.getElementById('user-input').value = '';
+  };
 }
 
 if (document.getElementById('request-type')) {
@@ -185,32 +213,4 @@ if (document.getElementById('request-type')) {
       selectDropdown.classList.remove('open');
     }
   });
-
-  document.getElementById('user-input').addEventListener('keypress', function (e) {
-    if (e.key === 'Enter') {
-      const userText = document.getElementById('user-input').value.trim();
-      const tipo = document.getElementById('request-type').value;
-      
-      sendChatMessage({
-        endpoint: '/api/chat/ask',
-        payload: { Prompt: userText, tipo },
-        userText,
-        format: tipo == '0' ? 'markdown' : 'plain',
-        responseKey: 'response',
-      });
-      document.getElementById('user-input').value = '';
-    }
-  });
-  window.sendMessage = function () {
-    const userText = document.getElementById('user-input').value.trim();
-    const tipo = document.getElementById('request-type').value;
-    sendChatMessage({
-      endpoint: '/api/chat/ask',
-      payload: { Prompt: userText, tipo },
-      userText,
-      format: tipo == '0' ? 'markdown' : 'plain',
-      responseKey: 'response',
-    });
-    document.getElementById('user-input').value = '';
-  };
 }

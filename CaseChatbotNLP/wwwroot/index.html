@@ -44,16 +44,45 @@
         </div>
 
         <input type="text" id="user-input" placeholder="Escribe tu pregunta..." />
-        <button onclick="sendMessage()">Enviar</button>
+
+        <div class="voice-message">
+          <button id="voiceBtn" aria-label="Mensaje de voz" title="Mensaje de voz">
+            <i id="voiceIcon" class="fa-solid fa-microphone"></i>
+          </button>
+        </div>
+
+        <button class="send-button" onclick="sendMessage()">
+          <span class="send-button-text">Enviar</span>
+          <i class="fa-solid fa-arrow-up icon"></i>
+        </button>
       </div>
     </div>
 
     <!-- Scripts -->
     <script type="module">
       import { initNav } from './js/shared/nav.js';
+      import { initVoice } from './js/shared/voice.js';
 
       initNav('navbar-toggle', 'navbar-links');
+
+      // Init voice
+      const voiceController = initVoice({
+        voiceBtnId: 'voiceBtn',
+        voiceIconId: 'voiceIcon',
+        inputId: 'user-input',
+        lang: 'es-ES',
+        continuous: false,
+        interimResults: false,
+        onResult: (transcript) => {
+          document.getElementById('user-input').value = transcript;
+        },
+        onError: (evt) => {
+          console.error('Speech error', evt);
+        }
+      });
     </script>
-    <script src="./js/chat.js"></script>
+    <script type="module" src="./js/chat.js"></script>
+
+    <script src="https://kit.fontawesome.com/6dc81ce773.js" crossorigin="anonymous"></script>
   </body>
 </html>
