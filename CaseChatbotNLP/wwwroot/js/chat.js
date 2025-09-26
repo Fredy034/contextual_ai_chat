@@ -1,20 +1,6 @@
-let URL_API = window.URL_API || '/api/chat/ask';
-try {
-  import('./connection.js').then((mod) => {
-    if (mod.default) URL_API = mod.default;
-    if (mod.URL_API) URL_API = mod.URL_API;
-  });
-} catch {}
-
-function getSessionId() {
-  let sid = localStorage.getItem('chatSessionId');
-  if (!sid) {
-    if (crypto && crypto.randomUUID) sid = crypto.randomUUID();
-    else sid = 'sid-' + Date.now() + '-' + Math.floor(Math.random() * 10000);
-    localStorage.setItem('chatSessionId', sid);
-  }
-  return sid;
-}
+'use strict';
+import { URL_API } from './connection.js';
+import { getSessionId, buildHistoryText } from './shared/utils.js';
 
 const conversationHistory = [];
 
@@ -22,13 +8,6 @@ const conversationHistory = [];
 function pushHistory(role, content, maxMessages = 20) {
   conversationHistory.push({ role, content });
   while (conversationHistory.length > maxMessages) conversationHistory.shift();
-}
-
-// construir texto de contexto truncado por caracteres
-function buildHistoryText(maxChars = 6000) {
-  let text = conversationHistory.map((m) => `${m.role.toUpperCase()}: ${m.content}`).join('\n---\n');
-  if (text.length <= maxChars) return text;
-  return text.slice(-maxChars);
 }
 
 function parseSimpleMarkdown(text) {
@@ -123,7 +102,7 @@ async function sendChatMessage({
     ...payload,
     Query: userText,
     History: conversationHistory,
-    HistoryText: buildHistoryText(6000),
+    HistoryText: buildHistoryText(conversationHistory, 6000),
     SessionId: getSessionId(),
     UploadFileName: lastUploaded,
   };
@@ -149,16 +128,16 @@ async function sendChatMessage({
   }, waitTime);
 }
 
-// Integración para search.html/buscarweb.html
 if (window.CHAT_TYPE) {
   document.getElementById('user-input').addEventListener('keypress', function (e) {
     if (e.key === 'Enter') {
       const type = window.CHAT_TYPE;
       const userText = document.getElementById('user-input').value.trim();
       const endpoint = type === 'web' ? `${URL_API}/searchweb` : `${URL_API}/search`;
+
       sendChatMessage({
         endpoint,
-        payload: type === 'web' ? { Query: userText } : { Query: userText },
+        payload: { Query: userText },
         userText,
         format: 'markdown',
         responseKey: 'results',
@@ -181,8 +160,6 @@ if (window.CHAT_TYPE) {
 }
 
 if (document.getElementById('request-type')) {
-  // Custom select logic
-
   const selectDropdown = document.querySelector('.select-dropdown');
   const selectBtn = document.getElementById('select-btn');
   const selectOptions = document.getElementById('select-options');
@@ -213,6 +190,7 @@ if (document.getElementById('request-type')) {
     if (e.key === 'Enter') {
       const userText = document.getElementById('user-input').value.trim();
       const tipo = document.getElementById('request-type').value;
+      
       sendChatMessage({
         endpoint: '/api/chat/ask',
         payload: { Prompt: userText, tipo },

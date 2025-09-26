@@ -1,6 +1,7 @@
 ﻿'use strict';
 import { URL_API } from './connection.js';
 import { refreshDocuments } from './document.js';
+import { getSessionId } from './shared/utils.js';
 
 const fileInput = document.getElementById('fileInput');
 const fileNameSpan = document.getElementById('fileName');
@@ -28,7 +29,7 @@ export async function uploadFileForSession(file) {
   formData.append('file', file);
 
   try {
-    const sessionId = localStorage.getItem('chatSessionId') || '';
+    const sessionId = getSessionId();
     const url = sessionId ? `${URL_API}/upload?sessionId=${encodeURIComponent(sessionId)}` : `${URL_API}/upload`;
 
     const response = await fetch(url, {
@@ -65,7 +66,7 @@ export async function uploadFile() {
   formData.append('file', fileInput.files[0]);
 
   try {
-    const sessionId = localStorage.getItem('chatSessionId') || '';
+    const sessionId = getSessionId();
     const url = sessionId ? `${URL_API}/upload?sessionId=${encodeURIComponent(sessionId)}` : `${URL_API}/upload`;
 
     const response = await fetch(url, {
