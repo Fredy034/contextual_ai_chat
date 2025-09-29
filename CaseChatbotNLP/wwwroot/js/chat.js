@@ -1,6 +1,6 @@
 'use strict';
 import { URL_API } from './connection.js';
-import { getSessionId, buildHistoryText } from './shared/utils.js';
+import { buildHistoryText, getSessionId } from './shared/utils.js';
 
 const conversationHistory = [];
 
@@ -39,6 +39,9 @@ function parseSimpleMarkdown(text) {
     return match;
   });
 
+  // Enlaces [texto](url)
+  text = text.replace(/\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)/g, '<a href="$2" target="_blank" rel="noopener">$1</a>');
+
   // Saltos de línea
   text = text.replace(/\n{2,}/g, '<br>');
   text = text.replace(/\n/g, '');
@@ -49,15 +52,179 @@ function addChatMessage(text, sender, format = 'plain') {
   const chat = document.getElementById('chat-messages');
   const message = document.createElement('div');
   message.classList.add('chat-message');
+  let msgContent = '';
   if (sender === 'user') {
     message.classList.add('chat-user');
-    message.innerHTML = text;
+    msgContent = text;
     pushHistory('user', text);
   } else {
     message.classList.add('chat-system');
-    message.innerHTML = format === 'markdown' ? parseSimpleMarkdown(text) : text;
+    msgContent = format === 'markdown' ? parseSimpleMarkdown(text) : text;
     pushHistory('assistant', text);
   }
+
+  // Contenedor de acciones reutilizable y asignación por tipo de mensaje
+  function createActionButton({ iconClass, title, onClick, btnClass = '' }) {
+    const btn = document.createElement('button');
+    btn.className = btnClass;
+    btn.title = title;
+    btn.innerHTML = `<i class="${iconClass}"></i>`;
+    btn.addEventListener('click', onClick);
+    return btn;
+  }
+
+  // Define los botones disponibles y para qué tipo de mensaje se muestran
+  const ACTION_BUTTONS = [
+    {
+      iconClass: 'fa-solid fa-clone',
+      title: 'Copiar',
+      btnClass: 'chat-copy-btn',
+      showFor: ['both'],
+      onClick: function (msgContent, btn) {
+        const temp = document.createElement('div');
+        temp.innerHTML = msgContent;
+        const plainText = temp.textContent || temp.innerText || '';
+        navigator.clipboard.writeText(plainText);
+        btn.innerHTML = '<i class="fa-solid fa-check"></i>';
+        btn.classList.add('copied');
+        setTimeout(() => {
+          btn.innerHTML = '<i class="fa-solid fa-clone"></i>';
+          btn.classList.remove('copied');
+        }, 1200);
+      },
+    },
+    {
+      iconClass: 'fa-solid fa-rotate',
+      title: 'Reintentar',
+      btnClass: 'chat-retry-btn',
+      showFor: ['system'],
+      onClick: function (msgContent, btn) {
+        let source = 'index';
+        if (window.location.pathname.includes('buscar.html')) source = 'buscar';
+        else if (window.location.pathname.includes('buscarweb.html')) source = 'buscarweb';
+        let lastUserMsg = '';
+        for (let i = conversationHistory.length - 1; i >= 0; i--) {
+          if (conversationHistory[i].role === 'user') {
+            lastUserMsg = conversationHistory[i].content;
+            break;
+          }
+        }
+        if (!lastUserMsg) return;
+
+        const improvedPrompt = lastUserMsg + '\n\nMejora la respuesta anterior.';
+
+        if (source === 'buscar') {
+          sendChatMessage({
+            endpoint: `${URL_API}/search`,
+            payload: { Query: improvedPrompt },
+            userText: improvedPrompt,
+            format: 'markdown',
+            responseKey: 'results',
+            skipUserMessage: true,
+          });
+        } else if (source === 'buscarweb') {
+          sendChatMessage({
+            endpoint: `${URL_API}/searchweb`,
+            payload: { Query: improvedPrompt },
+            userText: improvedPrompt,
+            format: 'markdown',
+            responseKey: 'results',
+            skipUserMessage: true,
+          });
+        } else {
+          // index.html
+          sendChatMessage({
+            endpoint: '/api/chat/ask',
+            payload: { Prompt: improvedPrompt, tipo: document.getElementById('request-type')?.value || '0' },
+            userText: improvedPrompt,
+            format: document.getElementById('request-type')?.value == '0' ? 'markdown' : 'plain',
+            responseKey: 'response',
+            skipUserMessage: true,
+          });
+        }
+      },
+    },
+    {
+      iconClass: 'fa-solid fa-arrow-up-from-bracket',
+      title: 'Compartir chat',
+      btnClass: 'chat-share-btn',
+      showFor: ['both'],
+      onClick: function (msgContent, btn) {
+        let chatText = conversationHistory
+          .map((m) => `${m.role === 'user' ? 'Usuario' : 'Sistema'}: ${m.content}`)
+          .join('\n---\n');
+        navigator.clipboard.writeText(chatText).then(() => {
+          btn.innerHTML = '<i class="fa-solid fa-check"></i>';
+          btn.classList.add('shared');
+          setTimeout(() => {
+            btn.innerHTML = '<i class="fa-solid fa-arrow-up-from-bracket"></i>';
+            btn.classList.remove('shared');
+          }, 1200);
+        });
+      },
+    },
+    {
+      iconClass: 'fa-solid fa-volume-high',
+      title: 'Escuchar',
+      btnClass: '',
+      showFor: ['system'],
+      onClick: function (msgContent, btn) {
+        if (!('speechSynthesis' in window)) {
+          alert('Tu navegador no soporta síntesis de voz.');
+          return;
+        }
+        if (btn.classList.contains('reproducing')) {
+          window.speechSynthesis.cancel();
+          btn.innerHTML = '<i class="fa-solid fa-volume-high"></i>';
+          btn.classList.remove('reproducing');
+          return;
+        }
+        const temp = document.createElement('div');
+        temp.innerHTML = msgContent;
+        if (temp.textContent.includes('Ver documento')) {
+          temp.textContent = temp.textContent.replace('Ver documento', '');
+        }
+        const utterance = new SpeechSynthesisUtterance(temp.textContent);
+        speechSynthesis.speak(utterance);
+        btn.innerHTML = '<i class="fa-solid fa-circle-stop"></i>';
+        btn.title = 'Detener';
+        btn.classList.add('reproducing');
+        utterance.onerror = function () {
+          btn.innerHTML = '<i class="fa-solid fa-volume-high"></i>';
+          btn.classList.remove('reproducing');
+        };
+        utterance.onend = function () {
+          btn.innerHTML = '<i class="fa-solid fa-volume-high"></i>';
+          btn.classList.remove('reproducing');
+        };
+      },
+    },
+  ];
+
+  const actionsDiv = document.createElement('div');
+  actionsDiv.classList.add('chat-actions');
+
+  const typeForBtn = sender === 'user' ? 'user' : 'system';
+  ACTION_BUTTONS.forEach((cfg) => {
+    if (cfg.showFor.includes(typeForBtn) || cfg.showFor.includes('both')) {
+      const btn = createActionButton({
+        iconClass: cfg.iconClass,
+        title: cfg.title,
+        btnClass: cfg.btnClass,
+        onClick: function () {
+          cfg.onClick(msgContent, btn);
+        },
+      });
+      actionsDiv.appendChild(btn);
+    }
+  });
+
+  // Estructura final
+  const msgBody = document.createElement('div');
+  msgBody.classList.add('chat-message-body');
+  msgBody.innerHTML = msgContent;
+  message.appendChild(msgBody);
+  message.appendChild(actionsDiv);
   chat.appendChild(message);
   chat.scrollTop = chat.scrollHeight;
 }
@@ -90,12 +257,16 @@ async function sendChatMessage({
   format = 'markdown',
   responseKey = 'results',
   minLoadingTime = 1000,
+  skipUserMessage = false,
 }) {
   if (!userText) return;
-  addChatMessage(userText, 'user');
+  if (!skipUserMessage) {
+    addChatMessage(userText, 'user');
+  }
   addLoadingIndicator();
 
-  const lastUploaded = window.__lastUploadedFile && window.__lastUploadedFile.name ? window.__lastUploadedFile.name : null;
+  const lastUploaded =
+    window.__lastUploadedFile && window.__lastUploadedFile.name ? window.__lastUploadedFile.name : null;
 
   // Construir payload con History limitado
   const finalPayload = {
