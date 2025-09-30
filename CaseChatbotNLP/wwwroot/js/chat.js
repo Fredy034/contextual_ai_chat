@@ -66,9 +66,8 @@ function addChatMessage(text, sender, format = 'plain') {
   // Contenedor de acciones reutilizable y asignación por tipo de mensaje
   function createActionButton({ iconClass, title, onClick, btnClass = '' }) {
     const btn = document.createElement('button');
-    btn.className = btnClass;
-    btn.title = title;
-    btn.innerHTML = `<i class="${iconClass}"></i>`;
+    btn.className = btnClass + ' has-tooltip';
+    btn.innerHTML = `<i class="${iconClass}"></i><span class="chat-tooltip">${title}</span>`;
     btn.addEventListener('click', onClick);
     return btn;
   }
@@ -150,8 +149,24 @@ function addChatMessage(text, sender, format = 'plain') {
       btnClass: 'chat-share-btn',
       showFor: ['both'],
       onClick: function (msgContent, btn) {
+        function stripHtmlAndLinks(html) {
+          const temp = document.createElement('div');
+          temp.innerHTML = html;
+          let text = temp.textContent || temp.innerText || '';
+
+          const linkRegex = /<a [^>]*href="([^"]+)"[^>]*>(.*?)<\/a>/gi;
+          let replaced = html.replace(linkRegex, (match, url, label) => {
+            return `\n[Enlace] ${label}: ${encodeURI(url)}`;
+          });
+
+          temp.innerHTML = replaced;
+          text = temp.textContent || temp.innerText || '';
+          
+          return text;
+        }
+
         let chatText = conversationHistory
-          .map((m) => `${m.role === 'user' ? 'Usuario' : 'Sistema'}: ${m.content}`)
+          .map((m) => `${m.role === 'user' ? 'Usuario' : 'Sistema'}: ${stripHtmlAndLinks(m.content)}`)
           .join('\n---\n');
         navigator.clipboard.writeText(chatText).then(() => {
           btn.innerHTML = '<i class="fa-solid fa-check"></i>';

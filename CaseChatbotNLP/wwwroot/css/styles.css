@@ -232,7 +232,7 @@ button:hover {
 #chat-messages {
   height: 100%;
   max-height: calc(100vh - 170px);
-  padding: 18px;
+  padding: 18px 30px;
   display: flex;
   flex-direction: column;
   gap: 10px;
@@ -287,6 +287,32 @@ button:hover {
   background: var(--color-pdf);
   color: #fff;
   animation: pulse 1.5s infinite;
+}
+.chat-tooltip {
+  visibility: hidden;
+  opacity: 0;
+  background: #222;
+  color: #fff;
+  font-weight: 500;
+  font-size: 0.7rem;
+  text-align: center;
+  border-radius: 6px;
+  padding: 5px 10px;
+  position: absolute;
+  z-index: 1000;
+  top: 110%;
+  left: 50%;
+  transform: translateX(-50%);
+  white-space: nowrap;
+  transition: opacity 0.2s;
+  pointer-events: none;
+}
+.has-tooltip {
+  position: relative;
+}
+.has-tooltip:hover .chat-tooltip {
+  visibility: visible;
+  opacity: 1;
 }
 .chat-user {
   align-self: flex-end;
