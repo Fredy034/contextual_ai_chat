@@ -86,6 +86,18 @@ namespace TextSimilarityApi.Services
                 var fileName = reader.IsDBNull(0) ? string.Empty : reader.GetString(0);
                 var text = reader.IsDBNull(1) ? string.Empty : reader.GetString(1);
 
+                if (string.IsNullOrEmpty(fileName)) continue;
+                if (string.IsNullOrEmpty(text)) continue;
+                if (fileName.StartsWith("~$")) continue; // Archivos temporales de Office
+                if (fileName.EndsWith(".tmp", StringComparison.OrdinalIgnoreCase)) continue; // Archivos temporales
+                if (fileName.StartsWith("SEGMENT::")) continue; // Excluir segmentos internos generados por video
+
+                // Removemos el encabezado para que snippet sea solo el texto limpio
+                if (!string.IsNullOrEmpty(text) && text.StartsWith("[OCR extraído de imagen]"))
+                {
+                    text = text.Replace("[OCR extraído de imagen]", "").Trim();
+                }
+
                 var snippet = string.IsNullOrEmpty(text)
                     ? string.Empty
                     : (text.Length > snippetLength ? text.Substring(0, snippetLength) + "..." : text);

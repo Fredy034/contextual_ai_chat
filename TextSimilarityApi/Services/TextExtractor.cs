@@ -167,5 +167,10 @@ namespace TextSimilarityApi.Services
                 throw;
             }
         }
+
+        public async Task<string> ExtractTextFromImageFileAsync(string filePath)
+        {
+            return await Task.Run(() => ExtractTextFromImageTesseract(filePath));
+        }
     }
 }

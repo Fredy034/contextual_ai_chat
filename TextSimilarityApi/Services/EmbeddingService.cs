@@ -50,7 +50,8 @@ namespace TextSimilarityApi.Services
                 Pregunta: {question}
             ";
 
-            var requestBody = new {
+            var requestBody = new
+            {
                 messages = new object[]
                 {
                     new { role = "system", content = systemPrompt  },
@@ -67,9 +68,21 @@ namespace TextSimilarityApi.Services
             using var doc = JsonDocument.Parse(json);
             var answer = doc.RootElement.GetProperty("choices")[0].GetProperty("message").GetProperty("content").GetString();
 
+            // Remover metadatos del procesamiento de videos
+            // Entrada: SEGMENT::AUDIO::dejar_de_utilizar_consolelog.mp4::segment:0::0,00-15,00
+            // Salida:  dejar_de_utilizar_consolelog.mp4
+            if (filename.StartsWith("SEGMENT::"))
+            {
+                var parts = filename.Split("::");
+                if (parts.Length >= 3)
+                {
+                    filename = parts[2];
+                }
+            }
+
             // string _documento = $"<br> <a target=\"_blank\" href=\"https://ch-npl-d5djc6cafehnfgf7.eastus-01.azurewebsites.net/Embedding/download?name={filename}&download=false\">Ver documento</a>";
             string _documento = $"<br> <a target=\"_blank\" href=\"https://localhost:7180/Embedding/download?name={filename}&download=false\">Ver documento</a>";
-            
+
             if (question.ToLower().Contains("hola")) _documento = "";
             if (answer != null && answer.Contains("No hay información suficiente")) _documento = "";
 
@@ -86,7 +99,8 @@ namespace TextSimilarityApi.Services
             var systemPrompt = "Eres un asistente que responde preguntas.";
             var userMessage = $"Contexto: {contextText}";
 
-            var requestBody = new {
+            var requestBody = new
+            {
                 messages = new object[]
                 {
                     new { role = "system", content = systemPrompt },

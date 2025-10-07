@@ -2,6 +2,9 @@ using TextSimilarityApi.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 
+var voskModelPath = builder.Configuration["Vosk:ModelPath"];
+var ffmpegPath = builder.Configuration["FFmpeg:Path"];
+
 // 1. Agregar el servicio CORS (permite cualquier origen, método y header)
 builder.Services.AddCors(options =>
 {
@@ -22,7 +25,14 @@ builder.Services.AddSingleton<EmbeddingRepository>();
 builder.Services.AddSingleton<AzureOcrService>();
 builder.Services.AddSingleton<InMemoryDocumentStore>();
 
-builder.Services.AddScoped<TextExtractor>();
+builder.Services.AddSingleton<TextExtractor>();
+builder.Services.AddSingleton<VideoProcessor>(sp =>
+{
+    var embeddingService = sp.GetRequiredService<EmbeddingService>();
+    var textExtractor = sp.GetRequiredService<TextExtractor>();
+
+    return new VideoProcessor(embeddingService, textExtractor, ffmpegPath, voskModelPath);
+});
 
 var app = builder.Build();
 

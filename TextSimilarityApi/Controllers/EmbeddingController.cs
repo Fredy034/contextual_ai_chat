@@ -15,14 +15,22 @@ namespace TextSimilarityApi.Controllers
         private readonly IWebHostEnvironment _env;
         private readonly TextExtractor _textExtractor;
         private readonly InMemoryDocumentStore _memoryStore;
+        private readonly VideoProcessor _videoProcessor;
 
-        public EmbeddingController(EmbeddingService embeddingService, EmbeddingRepository repository, IWebHostEnvironment env, TextExtractor textExtractor, InMemoryDocumentStore memoryStore)
+        public EmbeddingController(
+            EmbeddingService embeddingService, 
+            EmbeddingRepository repository, 
+            IWebHostEnvironment env, 
+            TextExtractor textExtractor, 
+            InMemoryDocumentStore memoryStore, 
+            VideoProcessor videoProcessor)
         {
             _embeddingService = embeddingService;
             _repository = repository;
             _env = env;
             _textExtractor = textExtractor;
             _memoryStore = memoryStore;
+            _videoProcessor = videoProcessor;
         }
 
         [HttpPost("upload")]
@@ -32,68 +40,168 @@ namespace TextSimilarityApi.Controllers
                 return BadRequest("Archivo no válido.");
 
             var safeFileName = Path.GetFileName(file.FileName);
+            var extension = Path.GetExtension(safeFileName).ToLowerInvariant();
+            var videoExtensions = new[] { ".mp4", ".avi", ".mov", ".wmv", ".flv", ".mkv" };
 
-            string extractedText = string.Empty;
-            string tempPath = string.Empty;
+            // Guardamos en temp inicialmente (ya que lo necesitamos para procesar)
+            string tempPath = Path.Combine(Path.GetTempPath(), $"{Guid.NewGuid()}_{safeFileName}");
+            using (var stream = new FileStream(tempPath, FileMode.Create))
+            {
+                await file.CopyToAsync(stream);
+            }
+
             try
             {
-                if (string.IsNullOrEmpty(sessionId))
+                if (videoExtensions.Contains(extension))
                 {
-                    var uploadsDir = Path.Combine(_env.ContentRootPath, "Uploads");
-                    Directory.CreateDirectory(uploadsDir);
-                    var filePath = Path.Combine(uploadsDir, safeFileName);
-                    using (var stream = new FileStream(filePath, FileMode.Create))
+                    // --- Es video: procesar audio + frames ---
+                    string filePathForProcessing = tempPath;
+                    if (string.IsNullOrEmpty(sessionId))
                     {
-                        await file.CopyToAsync(stream);
+                        var uploadsDir = Path.Combine(_env.ContentRootPath, "Uploads");
+                        Directory.CreateDirectory(uploadsDir);
+                        var destPath = Path.Combine(uploadsDir, safeFileName);
+
+                        // Si ya existe un archivo con mismo nombre, agrega sufijo para no sobreescribir
+                        if (System.IO.File.Exists(destPath))
+                        {
+                            var unique = $"{Path.GetFileNameWithoutExtension(safeFileName)}_{DateTime.UtcNow:yyyyMMddHHmmss}{Path.GetExtension(safeFileName)}";
+                            destPath = Path.Combine(uploadsDir, unique);
+                        }
+
+                        System.IO.File.Move(tempPath, destPath);
+                        filePathForProcessing = destPath;
                     }
 
-                    extractedText = await _textExtractor.ExtractTextAsync(filePath);
-                    var embedding = await _embeddingService.GetEmbeddingAsync(extractedText);
-                    _repository.SaveEmbedding(safeFileName, embedding, extractedText);
+                    // Llamo al VideoProcessor: devuelve segmentos (audio-chunks + OCR frames)
+                    var segments = await _videoProcessor.ProcessVideoAsync(filePathForProcessing, safeFileName, fpsForFrames: 0.5, chunkWindowSeconds: 15, maxConcurrentEmbeddings: 4);
 
-                    return Ok(new { message = $"Archivo '{safeFileName}' procesado y guardado." });
-                } 
+                    int savedCount = 0;
+                    var savedSegments = new List<(string FileName, float[] Vector, string Text)>();
+                    foreach (var seg in segments)
+                    {
+                        if (string.IsNullOrWhiteSpace(sessionId))
+                        {
+                            // Guardar permanentemente en DB
+                            _repository.SaveEmbedding(seg.FileName, seg.Vector, seg.Text);
+                            savedSegments.Add(seg);
+                            savedCount++;
+                        }
+                        else
+                        {
+                            if (!_memoryStore.ContainsText(sessionId, seg.Text))
+                            {
+                                _memoryStore.Add(sessionId, seg.FileName, seg.Vector, seg.Text);
+                                savedSegments.Add(seg);
+                                savedCount++;
+                            }
+                        }
+                    }
+
+                    var audioParts = savedSegments
+                        .Where(s => s.FileName != null && s.FileName.StartsWith("SEGMENT::AUDIO::"))
+                        .Select(s => s.Text).ToList();
+
+                    var frameParts = savedSegments
+                        .Where(s => s.FileName != null && s.FileName.StartsWith("SEGMENT::FRAME::"))
+                        .Select(s => s.Text).ToList();
+
+                    var combinedBuilder = new StringBuilder();
+                    if (audioParts.Any())
+                    {
+                        combinedBuilder.AppendLine("[Transcripción (audio)]");
+                        combinedBuilder.AppendLine(string.Join("\n\n", audioParts.Distinct().Take(50)));
+                        combinedBuilder.AppendLine();
+                    }
+                    if (frameParts.Any())
+                    {
+                        combinedBuilder.AppendLine("[Texto detectado en frames]");
+                        combinedBuilder.AppendLine(string.Join("\n\n", frameParts.Distinct().Take(50)));
+                        combinedBuilder.AppendLine();
+                    }
+
+                    var combinedText = combinedBuilder.ToString().Trim();
+                    if (string.IsNullOrWhiteSpace(combinedText))
+                    {
+                        combinedText = $"[Video procesado: {safeFileName}]";
+                    }
+
+                    if (string.IsNullOrEmpty(sessionId))
+                    {
+                        try
+                        {
+                            var summaryEmbedding = await _embeddingService.GetEmbeddingAsync(combinedText);
+                            _repository.SaveEmbedding(safeFileName, summaryEmbedding, combinedText);
+                        }
+                        catch (Exception ex)
+                        {
+                            Console.WriteLine($"[Upload] Warning: no se pudo guardar embedding summary para '{safeFileName}': {ex.Message}");
+                        }
+                    }
+
+                    return Ok(new { message = $"Video '{safeFileName}' procesado. Segmentos procesados/guardados: {savedCount}." });
+                }
                 else
                 {
-                    tempPath = Path.Combine(Path.GetTempPath(), $"{Guid.NewGuid()}_{safeFileName}");
-                    using (var stream = new FileStream(tempPath, FileMode.Create))
+                    // --- No es video: comportamiento original (documentos/imágenes) ---
+                    // Si sessionId == null -> guardo en Uploads y en DB; si sessionId != null -> proceso en memoria temporal
+                    if (string.IsNullOrEmpty(sessionId))
                     {
-                        await file.CopyToAsync(stream);
+                        var uploadsDir = Path.Combine(_env.ContentRootPath, "Uploads");
+                        Directory.CreateDirectory(uploadsDir);
+                        var filePath = Path.Combine(uploadsDir, safeFileName);
+
+                        if (System.IO.File.Exists(filePath))
+                        {
+                            var unique = $"{Path.GetFileNameWithoutExtension(safeFileName)}_{DateTime.UtcNow:yyyyMMddHHmmss}{Path.GetExtension(safeFileName)}";
+                            filePath = Path.Combine(uploadsDir, unique);
+                        }
+
+                        System.IO.File.Move(tempPath, filePath);
+
+                        var extractedText = await _textExtractor.ExtractTextAsync(filePath);
+                        var embedding = await _embeddingService.GetEmbeddingAsync(extractedText);
+                        _repository.SaveEmbedding(Path.GetFileName(filePath), embedding, extractedText);
+
+                        return Ok(new { message = $"Archivo '{Path.GetFileName(filePath)}' procesado y guardado." });
                     }
-
-                    extractedText = await _textExtractor.ExtractTextAsync(tempPath);
-
-                    if (_memoryStore.ContainsText(sessionId, extractedText))
+                    else
                     {
-                        try { System.IO.File.Delete(tempPath); } catch { /* */ }
-                        return Ok(new { message = $"Archivo '{safeFileName}' ya existe en la sesión '{sessionId}' (duplicado ignorado)." });
+                        var extractedText = await _textExtractor.ExtractTextAsync(tempPath);
+
+                        if (_memoryStore.ContainsText(sessionId, extractedText))
+                        {
+                            try { if (System.IO.File.Exists(tempPath)) System.IO.File.Delete(tempPath); } catch { }
+                            return Ok(new { message = $"Archivo '{safeFileName}' ya existe en la sesión '{sessionId}' (duplicado ignorado)." });
+                        }
+
+                        var embedding = await _embeddingService.GetEmbeddingAsync(extractedText);
+                        var added = _memoryStore.Add(sessionId, safeFileName, embedding, extractedText);
+
+                        try { if (System.IO.File.Exists(tempPath)) System.IO.File.Delete(tempPath); } catch { }
+
+                        if (!added)
+                        {
+                            return Ok(new { message = $"Archivo '{safeFileName}' ya existe en la sesión '{sessionId}' (duplicado ignorado)." });
+                        }
+
+                        return Ok(new { message = $"Archivo '{safeFileName}' procesado y guardado en memoria para sesión '{sessionId}'." });
                     }
-
-                    var embedding = await _embeddingService.GetEmbeddingAsync(extractedText);
-                    var added = _memoryStore.Add(sessionId, safeFileName, embedding, extractedText);
-
-                    try { System.IO.File.Delete(tempPath); } catch { /* Ignorar errores al eliminar temp */ }
-
-                    if (!added)
-                    {
-                        return Ok(new { message = $"Archivo '{safeFileName}' ya existe en la sesión '{sessionId}' (duplicado ignorado)." });
-                    }
-
-                    return Ok(new { message = $"Archivo '{safeFileName}' procesado y guardado en memoria para sesión '{sessionId}'." });
                 }
             }
             catch (NotSupportedException ex)
             {
-                if (!string.IsNullOrEmpty(tempPath) && System.IO.File.Exists(tempPath)) System.IO.File.Delete(tempPath);
+                try { if (!string.IsNullOrEmpty(tempPath) && System.IO.File.Exists(tempPath)) System.IO.File.Delete(tempPath); } catch { }
                 return BadRequest(new { error = ex.Message });
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"[Upload] Error extrayendo texto: {ex}");
-                if (!string.IsNullOrEmpty(tempPath) && System.IO.File.Exists(tempPath)) System.IO.File.Delete(tempPath);
+                Console.WriteLine($"[Upload] Error procesando archivo: {ex}");
+                try { if (!string.IsNullOrEmpty(tempPath) && System.IO.File.Exists(tempPath)) System.IO.File.Delete(tempPath); } catch { }
                 return StatusCode(500, new { error = "Error procesando el archivo: " + ex.Message });
             }
         }
+
 
         [HttpGet("download")]
         public IActionResult DownloadFile([FromQuery] string name, [FromQuery] bool download = false)
@@ -123,6 +231,11 @@ namespace TextSimilarityApi.Controllers
                 ".jpg" => "image/jpeg",
                 ".jpeg" => "image/jpeg",
                 ".gif" => "image/gif",
+                ".mp4" => "video/mp4",
+                ".mov" => "video/quicktime",
+                ".mkv" => "video/x-matroska",
+                ".webm" => "video/webm",
+                ".avi" => "video/x-msvideo",
                 _ => "application/octet-stream"
             };
 
