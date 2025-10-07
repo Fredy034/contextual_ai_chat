@@ -18,11 +18,11 @@ namespace TextSimilarityApi.Controllers
         private readonly VideoProcessor _videoProcessor;
 
         public EmbeddingController(
-            EmbeddingService embeddingService, 
-            EmbeddingRepository repository, 
-            IWebHostEnvironment env, 
-            TextExtractor textExtractor, 
-            InMemoryDocumentStore memoryStore, 
+            EmbeddingService embeddingService,
+            EmbeddingRepository repository,
+            IWebHostEnvironment env,
+            TextExtractor textExtractor,
+            InMemoryDocumentStore memoryStore,
             VideoProcessor videoProcessor)
         {
             _embeddingService = embeddingService;
@@ -268,13 +268,15 @@ namespace TextSimilarityApi.Controllers
                 .Select(e => new
                 {
                     e.FileName,
-                    Similarity = e.Vector != null && e.Vector.Length > 0 ?  SimilarityCalculator.CosineSimilarity(queryEmbedding, e.Vector) : -1.0,
+                    Similarity = e.Vector != null && e.Vector.Length > 0 ? SimilarityCalculator.CosineSimilarity(queryEmbedding, e.Vector) : -1.0,
                     e.Text
                 })
                 .OrderByDescending(e => e.Similarity)
                 .FirstOrDefault();
 
-            string historyText = request.HistoryText ?? string.Join("\n---\n", request.History.Select(h => $"{h.Role.ToUpper()}: {h.Content}"));
+            string historyText = request.History != null && request.History.Any()
+                ? string.Join("\n---\n", request.History.Select(h => $"{h.Role.ToUpper()}: {h.Content}"))
+                : string.Empty;
             var combined = $"{historyText}\n\nDocumento:\n{bestMatch?.Text ?? ""}";
 
             if (combined.Length > 16000) combined = combined.Substring(combined.Length - 16000);
@@ -290,9 +292,10 @@ namespace TextSimilarityApi.Controllers
             if (string.IsNullOrWhiteSpace(request.Query))
                 return BadRequest("Query is required.");
 
-            string historyText = request.HistoryText ?? (request.History != null && request.History.Any()
+            // Construir historial como texto plano a partir de History
+            string historyText = request.History != null && request.History.Any()
                 ? string.Join("\n---\n", request.History.Select(h => $"{h.Role.ToUpper()}: {h.Content}"))
-                : string.Empty);
+                : string.Empty;
 
             var sessionDocs = new List<(string FileName, float[] Vector, string Text)>();
             if (!string.IsNullOrEmpty(request.SessionId))
@@ -381,7 +384,8 @@ namespace TextSimilarityApi.Controllers
         {
             if (string.IsNullOrWhiteSpace(sessionId)) return BadRequest("SessionId is required.");
             var docs = _memoryStore.GetDocuments(sessionId);
-            var result = docs.Select(d => new { 
+            var result = docs.Select(d => new
+            {
                 FileName = d.FileName,
                 Snippet = d.Snippet,
                 previewUrl = (string?)null,
@@ -392,7 +396,8 @@ namespace TextSimilarityApi.Controllers
         }
     }
 
-    public class ChatMessageDTO {
+    public class ChatMessageDTO
+    {
         public string Role { get; set; } = string.Empty;
         public string Content { get; set; } = string.Empty;
     }
@@ -401,7 +406,6 @@ namespace TextSimilarityApi.Controllers
     {
         public string Query { get; set; } = String.Empty;
         public List<ChatMessageDTO> History { get; set; } = new();
-        public string? HistoryText { get; set; }
         public string? SessionId { get; set; }
     }
 }
