@@ -29,8 +29,14 @@ export async function uploadFileForSession(file) {
   formData.append('file', file);
 
   try {
-    const sessionId = getSessionId();
-    const url = sessionId ? `${URL_API}/upload?sessionId=${encodeURIComponent(sessionId)}` : `${URL_API}/upload`;
+    let url = `${URL_API}/upload`;
+
+    if (useSession) {
+      const sessionId = getSessionId();
+      if (sessionId) {
+        url += `?sessionId=${encodeURIComponent(sessionId)}`;
+      }
+    }
 
     const response = await fetch(url, {
       method: 'POST',
@@ -66,10 +72,7 @@ export async function uploadFile() {
   formData.append('file', fileInput.files[0]);
 
   try {
-    const sessionId = getSessionId();
-    const url = sessionId ? `${URL_API}/upload?sessionId=${encodeURIComponent(sessionId)}` : `${URL_API}/upload`;
-
-    const response = await fetch(url, {
+    const response = await fetch(`${URL_API}/upload`, {
       method: 'POST',
       body: formData,
     });

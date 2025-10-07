@@ -17,6 +17,7 @@ export const extGroups = {
   doc: ['doc', 'docx'],
   xls: ['xls', 'xlsx', 'csv'],
   txt: ['txt'],
+  video: ['mp4', 'mkv', 'webm'],
   other: [], 
 };
 
@@ -83,6 +84,7 @@ export function iconForExt(ext) {
   if (extGroups.img.includes(ext)) return { icon: 'fa-file-image', classIcon: 'doc-img' };
   if (extGroups.pdf.includes(ext)) return { icon: 'fa-file-pdf', classIcon: 'doc-pdf' };
   if (extGroups.txt.includes(ext)) return { icon: 'fa-file-lines', classIcon: 'doc-txt' };
+  if (extGroups.video.includes(ext)) return { icon: 'fa-file-video', classIcon: 'doc-video' };
 
   return { icon: 'fa-file', classIcon: 'doc-other' };
 }

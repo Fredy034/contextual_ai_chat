@@ -46,7 +46,7 @@
                 type="file"
                 id="fileInput"
                 style="display: none"
-                accept=".txt,.pdf,.doc,.docx,.xls,.xlsx,.csv,.jpg,.jpeg,.png,.gif,.bmp,.tiff"
+                accept=".txt,.pdf,.doc,.docx,.xls,.xlsx,.csv,.jpg,.jpeg,.png,.gif,.bmp,.tiff,.mp4,.avi,.mkv,.mov,.wmv,.flv"
               />
             </label>
             <span id="fileName" class="file-name"></span>
@@ -103,6 +103,7 @@
           <button class="btn-secondary" data-filter="doc" id="filterDoc">Word</button>
           <button class="btn-secondary" data-filter="xls" id="filterXls">Excel/CSV</button>
           <button class="btn-secondary" data-filter="txt" id="filterTxt">TXT</button>
+          <button class="btn-secondary" data-filter="video" id="filterVideo">Videos</button>
           <button class="btn-secondary" data-filter="other" id="filterOther">Otros</button>
         </section>
 
@@ -150,6 +151,11 @@
       document.getElementById('btnRefresh').addEventListener('click', () => loadDocuments('documentsList'));
 
       loadDocuments('documentsList');
+
+      // Limpiar el localStorage al cargar la página
+      window.onload = () => {
+        localStorage.clear();
+      };
     </script>
     <script type="module" src="js/connection.js"></script>
     <script type="module" src="js/document.js"></script>

@@ -21,6 +21,7 @@
   --color-txt: #6b7280;
   --color-xls: #6baf52;
   --color-img: #f59e0b;
+  --color-video: #9c27b0;
   --color-other: #bdbdbd;
 
   /* Typography */
@@ -411,6 +412,9 @@ button:hover {
 }
 .uploaded-file-info-content .doc-icon.doc-img {
   background: var(--color-img);
+}
+.uploaded-file-info-content .doc-icon.doc-video {
+  background: var(--color-video);
 }
 .uploaded-file-info-content .doc-icon.doc-other {
   color: #fff;
@@ -816,6 +820,10 @@ button:hover {
 .doc-card.doc-img {
   /* background: #fffbe6; */
   border-left: 6px solid var(--color-img);
+}
+.doc-card.doc-video {
+  /* background: #f9f5ff; */
+  border-left: 6px solid var(--color-video);
 }
 .doc-card.doc-other {
   /* background: #f8fafc; */

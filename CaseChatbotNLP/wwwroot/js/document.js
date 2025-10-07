@@ -13,6 +13,7 @@ export async function loadDocuments(containerId = 'documentsList') {
     if (!resp.ok) throw new Error('No se pudo obtener la lista de documentos');
 
     const data = await resp.json();
+    // console.log("Contenido:", data.length);
 
     if (!Array.isArray(data) || data.length === 0) {
       container.innerHTML = '<p class="muted">No hay documentos aún.</p>';
@@ -69,7 +70,7 @@ export async function loadDocuments(containerId = 'documentsList') {
   // Conectar filtros
   if (!window.__docFilterInit) {
     window.__docFilterInit = true;
-    const filterBtns = ['filterAll', 'filterImg', 'filterPdf', 'filterDoc', 'filterXls', 'filterTxt', 'filterOther'];
+    const filterBtns = ['filterAll', 'filterImg', 'filterPdf', 'filterDoc', 'filterXls', 'filterTxt', 'filterVideo', 'filterOther'];
     filterBtns.forEach((id) => {
       const btn = document.getElementById(id);
       if (btn) {
