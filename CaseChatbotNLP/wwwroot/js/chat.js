@@ -1,6 +1,6 @@
 'use strict';
 import { URL_API } from './connection.js';
-import { buildHistoryText, getSessionId } from './shared/utils.js';
+import { getSessionId } from './shared/utils.js';
 
 const conversationHistory = [];
 
@@ -161,7 +161,7 @@ function addChatMessage(text, sender, format = 'plain') {
 
           temp.innerHTML = replaced;
           text = temp.textContent || temp.innerText || '';
-          
+
           return text;
         }
 
@@ -283,12 +283,11 @@ async function sendChatMessage({
   const lastUploaded =
     window.__lastUploadedFile && window.__lastUploadedFile.name ? window.__lastUploadedFile.name : null;
 
-  // Construir payload con History limitado
+  // Construir payload con History limitado (solo History)
   const finalPayload = {
     ...payload,
     Query: userText,
     History: conversationHistory,
-    HistoryText: buildHistoryText(conversationHistory, 6000),
     SessionId: getSessionId(),
     UploadFileName: lastUploaded,
   };

@@ -109,20 +109,6 @@ export function getSessionId(storageKey = 'chatSessionId') {
 }
 
 /**
- * Builds a formatted text representation of a chat history, optionally truncating to a maximum character length.
- *
- * @param {Array<{role: string, content: string}>} history - Array of message objects, each containing a role and content.
- * @param {number} [maxChars=6000] - Maximum number of characters allowed in the output text.
- * @returns {string} Formatted chat history as a string, truncated from the end if it exceeds maxChars.
- */
-export function buildHistoryText(history = [], maxChars = 6000) {
-  let text = history.map((m) => `${m.role.toUpperCase()}: ${m.content}`).join('\n---\n');
-  if (text.length <= maxChars) return text;
-
-  return text.slice(-maxChars);
-}
-
-/**
  * Extracts and decodes the filename from a Content-Disposition header.
  *
  * @param {string} contentDispositionHeader - The Content-Disposition header value.
